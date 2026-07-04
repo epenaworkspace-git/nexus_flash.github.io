@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus Flash</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== NEXUS DESIGN SYSTEM (tokens) ===== */
+:root {
+  --bg:#0D1B2E; --panel:#152238; --panel-2:#1C2E45; --panel-3:#243650; --line:#2A3F5A;
+  --grad:linear-gradient(135deg,#22D3EE 0%,#3B82F6 100%);
+  --grad-glow:rgba(34,211,238,0.38);
+  --accent:#3B82F6; --accent-bright:#60A5FA; --accent-dim:rgba(59,130,246,0.14);
+  --text:#FFFFFF; --text-dim:rgba(255,255,255,0.70); --muted:#94A3B8;
+  --green:#10B981; --green-dim:rgba(16,185,129,0.14);
+  --red:#EF4444; --red-dim:rgba(239,68,68,0.14);
+  --orange:#F97316; --purple:#8B5CF6;
+  --radius:16px; --radius-sm:12px; --radius-xs:10px; --radius-pill:999px;
+  --shadow:0 2px 18px rgba(0,0,0,0.38);
+  --transition:all 0.28s cubic-bezier(.4,0,.2,1);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+[data-theme="light"] {
+  --bg:#FFFFFF; --panel:#FAFBFC; --panel-2:#F1F4F8; --panel-3:#E8EDF5; --line:#E2E8F0;
+  --grad:linear-gradient(135deg,#22D3EE 0%,#3B82F6 100%);
+  --grad-glow:rgba(34,211,238,0.25);
+  --accent:#0369A1; --accent-bright:#0284C7; --accent-dim:rgba(3,105,161,0.08);
+  --text:#0F172A; --text-dim:rgba(15,23,42,0.65); --muted:#64748B;
+  --green:#059669; --green-dim:rgba(5,150,105,0.10);
+  --red:#DC2626; --red-dim:rgba(220,38,38,0.10);
+  --orange:#EA580C; --purple:#7C3AED;
+  --shadow:0 1px 10px rgba(15,23,42,0.07),0 4px 18px rgba(15,23,42,0.04);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;min-height:100vh;transition:background .35s,color .35s;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(34,211,238,0.05) 0%,transparent 70%),
+             radial-gradient(ellipse 60% 40% at 80% 100%,rgba(59,130,246,0.04) 0%,transparent 70%);}
+[data-theme="light"] body::before{display:none;}
+
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,27,46,0.92);border-bottom:1px solid var(--line);
+  padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);}
+[data-theme="light"] .topbar{background:#FFFFFF;border-bottom-color:#E2E8F0;box-shadow:0 1px 12px rgba(15,23,42,0.08);}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.app-logo{width:34px;height:34px;background:var(--grad);border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;box-shadow:0 2px 16px var(--grad-glow);transition:var(--transition);}
+.app-name{font-size:16px;color:var(--accent);letter-spacing:.06em;font-weight:700;}
+.app-sub{font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;line-height:1;}
+.icon-btn{width:36px;height:36px;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:var(--transition);}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+.wrap{max-width:560px;margin:0 auto;padding:20px 16px 60px;}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:14px;
+  box-shadow:var(--shadow);animation:cardIn .55s cubic-bezier(.16,1,.3,1) both;}
+[data-theme="light"] .card{background:#FFFFFF;border-color:#E2E8F0;box-shadow:0 1px 8px rgba(15,23,42,0.06),0 4px 16px rgba(15,23,42,0.04);}
+
+.section-title{font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin:0 0 10px;
+  display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent);}
+
+.inp{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px;
+  color:var(--text);font-family:var(--font);font-size:15px;outline:none;transition:border-color .2s,box-shadow .2s;}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim);}
+.inp::placeholder{color:var(--muted);}
+[data-theme="light"] .inp{background:#FFFFFF;border-color:#CBD5E1;color:#0F172A;}
+textarea.inp{resize:vertical;min-height:160px;line-height:1.6;}
+
+.btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--grad);color:#FFFFFF;
+  border:none;border-radius:var(--radius-pill);padding:14px 22px;font-size:15px;font-weight:700;cursor:pointer;
+  font-family:var(--font);transition:transform .15s,box-shadow .2s,filter .15s;letter-spacing:.02em;flex:1;min-width:160px;}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 8px 28px var(--grad-glow);filter:brightness(1.06);}
+.btn-primary:active{transform:scale(.97);}
+.btn-primary:disabled{opacity:.5;cursor:default;transform:none;}
+.btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--panel-2);color:var(--text-dim);
+  border:1px solid var(--line);border-radius:var(--radius-pill);padding:12px 18px;font-size:14px;font-weight:600;
+  cursor:pointer;font-family:var(--font);transition:var(--transition);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent-bright);transform:translateY(-2px);}
+.btn-sm{display:inline-flex;align-items:center;gap:5px;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:var(--radius-pill);padding:8px 16px;font-size:13px;cursor:pointer;color:var(--text);font-family:var(--font);
+  transition:all .2s cubic-bezier(.4,0,.2,1);}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent-bright);transform:translateY(-2px);}
+.btn-sm:active{transform:scale(.95);}
+
+.result-card{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:18px;
+  margin-top:10px;font-size:14.5px;line-height:1.75;color:var(--text);white-space:pre-wrap;animation:fadeUp .45s cubic-bezier(.16,1,.3,1) both;}
+.result-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:8px;}
+.result-label{font-size:12px;color:var(--accent-bright);font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+.result-head-right{display:flex;align-items:center;gap:10px;}
+.result-tag{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+.delete-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px;border-radius:6px;transition:var(--transition);}
+.delete-btn:hover{color:var(--red);background:var(--red-dim);}
+
+.loading-box{text-align:center;padding:30px 20px;color:var(--accent);}
+.spinner{width:32px;height:32px;border:3px solid var(--line);border-top-color:#22D3EE;border-right-color:#3B82F6;
+  border-radius:50%;animation:spin .8s cubic-bezier(.5,.1,.5,.9) infinite,pulseGlow 1.6s ease-in-out infinite;margin:0 auto 10px;}
+.loading-box .lbl{font-size:13px;color:var(--muted);}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel-3);
+  border:1px solid var(--line);color:var(--text);border-radius:var(--radius-sm);padding:12px 22px;font-size:14px;font-weight:600;
+  z-index:999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;box-shadow:var(--shadow);white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.empty-hint{font-size:13px;color:var(--muted);text-align:center;padding:6px 0 2px;}
+
+@keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(.982);}to{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 6px var(--grad-glow);}50%{box-shadow:0 0 18px var(--grad-glow);}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="app-logo">⚡</div>
+    <div>
+      <div class="app-name">Nexus Flash</div>
+      <div class="app-sub">Análisis y acciones rápidas</div>
+    </div>
+  </div>
+  <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <div class="section-title">Situación actual</div>
+    <textarea class="inp" id="situacion" placeholder="Describe el comentario del cliente o la situación actual del proceso de venta…"></textarea>
+    <div class="btn-row">
+      <button class="btn-primary" id="btnPasos" onclick="ejecutar('pasos')">🎯 Siguientes pasos</button>
+      <button class="btn-primary" id="btnMsg" onclick="ejecutar('mensaje')">✍️ Redactar mensaje</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-ghost" onclick="limpiarTexto()" style="flex:1;">🔄 Nueva consulta</button>
+      <button class="btn-ghost" onclick="limpiarFormulario()" style="flex:1;">🗑️ Borrar datos</button>
+    </div>
+  </div>
+
+  <div id="resultados"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function toggleTheme(){
+  const html = document.documentElement;
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('nexusflash_theme', next);
+}
+document.documentElement.dataset.theme = localStorage.getItem('nexusflash_theme') || 'dark';
+document.getElementById('themeBtn').textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+function copiarTexto(id, btn){
+  const text = document.getElementById(id).innerText;
+  const original = btn.textContent;
+
+  function marcarCopiado(){
+    btn.textContent = '✅ Copiado';
+    setTimeout(()=>btn.textContent = original, 1500);
+  }
+
+  function fallbackCopy(){
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      marcarCopiado();
+    }catch(e){
+      showToast('⚠️ No se pudo copiar');
+    }
+  }
+
+  if(navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(marcarCopiado).catch(fallbackCopy);
+  }else{
+    fallbackCopy();
+  }
+}
+
+let consultaActual = 1;
+let ultimoTextoConsulta = '';
+
+function limpiarTexto(){
+  document.getElementById('situacion').value = '';
+  document.getElementById('situacion').focus();
+  if(document.getElementById('resultados').children.length){
+    consultaActual++;
+  }
+  ultimoTextoConsulta = '';
+  showToast('🔄 Nueva consulta, resultados conservados');
+}
+
+function limpiarFormulario(){
+  document.getElementById('situacion').value = '';
+  document.getElementById('resultados').innerHTML = '';
+  consultaActual = 1;
+  ultimoTextoConsulta = '';
+  document.getElementById('situacion').focus();
+  showToast('🗑️ Datos borrados');
+}
+
+const PROMPTS = {
+  pasos: `Eres un asistente experto en ventas. A partir del siguiente texto que describe un comentario de cliente o la situación actual de un proceso de venta, entrega ÚNICAMENTE una lista breve y práctica de los próximos pasos inmediatos a seguir. No agregues análisis, contexto adicional, introducciones ni conclusiones. Usa frases cortas y accionables, una por línea, con un guion al inicio. Adapta los pasos exactamente a la situación descrita. Responde en español.
+
+Situación:
+"""
+{TEXTO}
+"""`,
+  mensaje: `Eres un asistente experto en ventas. A partir del siguiente texto que describe un comentario de cliente o la situación actual de un proceso de venta, redacta el siguiente mensaje que se debería enviar al cliente o prospecto. El mensaje debe estar listo para copiar y enviar tal cual (sin placeholders, sin instrucciones, sin comentarios extra), debe ser natural, profesional y adaptado al contexto y objetivo de la gestión. Responde solo con el mensaje, en español.
+
+Situación:
+"""
+{TEXTO}
+"""`
+};
+
+function actualizarEtiquetasConsulta(tipo){
+  const cont = document.getElementById('resultados');
+  const cards = Array.from(cont.querySelectorAll('[data-tipo="' + tipo + '"]'));
+  // El orden de las etiquetas debe basarse en el número cronológico de
+  // consulta (orden real en que se generaron), no en la posición visual
+  // dentro del DOM (que está invertida: la más reciente aparece arriba).
+  const orden = [];
+  cards.forEach(c => {
+    if(!orden.includes(c.dataset.consulta)) orden.push(c.dataset.consulta);
+  });
+  orden.sort((a, b) => Number(a) - Number(b));
+  cards.forEach(c => {
+    const tagEl = c.querySelector('.result-tag');
+    if(!tagEl) return;
+    if(orden.length <= 1){
+      tagEl.textContent = '';
+      return;
+    }
+    const idx = orden.indexOf(c.dataset.consulta) + 1;
+    tagEl.textContent = tipo === 'pasos' ? ('Pasos ' + idx) : ('Mensaje ' + idx);
+  });
+}
+
+function eliminarTarjeta(btn, tipo){
+  const card = btn.closest('.card');
+  if(card) card.remove();
+  actualizarEtiquetasConsulta(tipo);
+  showToast('🗑️ Tarjeta eliminada');
+}
+
+async function ejecutar(tipo){
+  const texto = document.getElementById('situacion').value.trim();
+  if(!texto){
+    showToast('⚠️ Escribe la situación primero');
+    return;
+  }
+
+  // Si el texto de la situación cambió respecto a la última consulta generada,
+  // se trata automáticamente como una consulta nueva (sin depender de que se
+  // presione el botón "Nueva consulta").
+  if(texto !== ultimoTextoConsulta){
+    if(document.getElementById('resultados').children.length){
+      consultaActual++;
+    }
+    ultimoTextoConsulta = texto;
+  }
+
+  document.getElementById('btnPasos').disabled = true;
+  document.getElementById('btnMsg').disabled = true;
+
+  const resId = 'res_' + tipo + '_' + Date.now();
+  const label = tipo === 'pasos' ? '🎯 Siguientes pasos' : '✍️ Mensaje sugerido';
+  const loadingId = 'load_' + Date.now();
+
+  const cont = document.getElementById('resultados');
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.tipo = tipo;
+  card.dataset.consulta = consultaActual;
+  card.innerHTML = `
+    <div class="result-head">
+      <span class="result-label">${label}</span>
+      <div class="result-head-right">
+        <span class="result-tag"></span>
+        <button class="delete-btn" onclick="eliminarTarjeta(this,'${tipo}')" title="Eliminar">🗑️</button>
+      </div>
+    </div>
+    <div id="${loadingId}" class="loading-box">
+      <div class="spinner"></div>
+      <div class="lbl">Analizando…</div>
+    </div>
+  `;
+
+  // Las tarjetas se agrupan por consulta. Dentro de un mismo grupo, los
+  // mensajes siempre quedan por encima de los siguientes pasos. Un grupo
+  // nuevo (consulta nueva) siempre se coloca por encima de todo lo anterior.
+  const grupoCards = cont.querySelectorAll('[data-consulta="' + consultaActual + '"]');
+  if(grupoCards.length === 0){
+    // Consulta nueva: va arriba de todo
+    cont.insertBefore(card, cont.firstChild);
+  } else if(tipo === 'mensaje'){
+    // El mensaje siempre va arriba del resto del grupo (incluidos otros mensajes)
+    cont.insertBefore(card, grupoCards[0]);
+  } else {
+    // Los pasos se agregan al final del grupo, debajo de los mensajes
+    grupoCards[grupoCards.length - 1].insertAdjacentElement('afterend', card);
+  }
+
+  actualizarEtiquetasConsulta(tipo);
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try{
+    const prompt = PROMPTS[tipo].replace('{TEXTO}', texto);
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content || []).map(b => b.text || '').join('\n').trim();
+
+    document.getElementById(loadingId).outerHTML = `
+      <div class="result-card" id="${resId}">${text.replace(/</g,'&lt;')}</div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn-sm" onclick="copiarTexto('${resId}', this)">📋 Copiar</button>
+      </div>
+    `;
+  }catch(err){
+    document.getElementById(loadingId).outerHTML = `<div class="result-card" style="color:var(--red);">Ocurrió un error al generar la respuesta. Intenta nuevamente.</div>`;
+  }finally{
+    document.getElementById('btnPasos').disabled = false;
+    document.getElementById('btnMsg').disabled = false;
+  }
+}
+</script>
+</body>
+</html>
