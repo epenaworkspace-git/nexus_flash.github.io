@@ -113,6 +113,31 @@ textarea.inp{resize:vertical;min-height:160px;line-height:1.6;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 @keyframes spin{to{transform:rotate(360deg);}}
 @keyframes pulseGlow{0%,100%{box-shadow:0 0 6px var(--grad-glow);}50%{box-shadow:0 0 18px var(--grad-glow);}}
+/* ===== SETTINGS MODAL / API CONFIG ===== */
+.settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;}
+.settings-overlay.open{display:flex;}
+.settings-modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);max-width:520px;width:100%;padding:22px;box-shadow:var(--shadow);}
+.settings-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.settings-modal-title{font-size:16px;font-weight:700;}
+.settings-modal-sub{font-size:12px;color:var(--muted);margin-bottom:16px;}
+.provider-row{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--line);}
+.provider-row:last-child{border-bottom:none;}
+.provider-label{font-size:13px;font-weight:700;margin-bottom:6px;}
+.apikey-field-wrap{position:relative;display:flex;align-items:center;}
+.apikey-field{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 40px 10px 12px;color:var(--text);font-size:13px;font-family:var(--font);}
+.apikey-eye{position:absolute;right:8px;background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);}
+.apikey-status-row{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:var(--muted);}
+.apikey-status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.apikey-status-dot.has-key{background:var(--green);}
+.apikey-status-dot.testing{background:var(--accent);animation:apikeyPulse 0.9s ease-in-out infinite;}
+.apikey-status-dot.error{background:var(--red);}
+@keyframes apikeyPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.apikey-btns{display:flex;gap:8px;margin-top:8px;}
+.btn-save-key,.btn-test-key,.btn-del-key{font-size:12px;padding:7px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);cursor:pointer;}
+.btn-save-key:hover{border-color:var(--accent);color:var(--accent);}
+.btn-test-key:hover{border-color:var(--accent);color:var(--accent);}
+.btn-del-key:hover{border-color:var(--red);color:var(--red);}
+.settings-close-btn{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--text);cursor:pointer;margin-top:8px;width:100%;}
 </style>
 </head>
 <body>
@@ -125,7 +150,19 @@ textarea.inp{resize:vertical;min-height:160px;line-height:1.6;}
       <div class="app-sub">Análisis y acciones rápidas</div>
     </div>
   </div>
+  <button class="icon-btn" id="settingsBtn" onclick="openSettings()" title="Configuración">⚙️</button>
   <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+</div>
+
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-modal">
+    <div class="settings-modal-head">
+      <div class="settings-modal-title">⚙️ Configuración · APIs de IA</div>
+    </div>
+    <div class="settings-modal-sub">Configura una o varias. Se usa la primera disponible y si falla se pasa automáticamente a la siguiente.</div>
+    <div id="apiProvidersList"></div>
+    <button class="settings-close-btn" onclick="closeSettings()">Cerrar</button>
+  </div>
 </div>
 
 <div class="wrap">
@@ -150,6 +187,216 @@ textarea.inp{resize:vertical;min-height:160px;line-height:1.6;}
 <div class="toast" id="toast"></div>
 
 <script>
+// ─── CONFIGURACIÓN MULTI-IA (Claude / Gemini / ChatGPT / Grok con fallback) ────
+const CFG_STORAGE_KEY = 'nexusflash_cfg';
+const CFG = { claude:'', gemini:'', chatgpt:'', grok:'' };
+function cfgLoad(){ try{ const c=localStorage.getItem(CFG_STORAGE_KEY); if(c) Object.assign(CFG, JSON.parse(c)); }catch(e){} }
+function cfgSaveLocal(){ try{ localStorage.setItem(CFG_STORAGE_KEY, JSON.stringify(CFG)); }catch(e){} }
+const API_KEY_RULES = {
+  claude:  v => v.trim().length > 0,
+  gemini:  v => v.trim().length > 0,
+  chatgpt: v => v.trim().length > 0,
+  grok:    v => v.trim().length > 0,
+};
+function cfgValidateKey(provider, value){ if(!value) return null; const r=API_KEY_RULES[provider]; return r?r(value):true; }
+const CLAUDE_MODELS  = ['claude-sonnet-5','claude-haiku-4-5-20251001'];
+const GEMINI_MODELS  = ['gemini-2.5-flash','gemini-2.0-flash'];
+const CHATGPT_MODELS = ['gpt-4o-mini','gpt-4.1-mini','gpt-3.5-turbo'];
+const GROK_MODELS    = ['grok-3-mini','grok-2-latest','grok-beta'];
+
+async function _fetchWithRetry(url, opts, maxRetries=2){
+  for(let attempt=0; attempt<=maxRetries; attempt++){
+    let res;
+    try{ res = await fetch(url, opts); }
+    catch(e){
+      if(attempt===maxRetries) return { error:'NETWORK', message:'Error de red' };
+      await new Promise(r=>setTimeout(r, Math.pow(2,attempt)*5000)); continue;
+    }
+    if(res.status===429){
+      if(attempt===maxRetries) return { error:'RATE_LIMIT', message:'Límite de peticiones alcanzado' };
+      const ra=res.headers.get('Retry-After');
+      await new Promise(r=>setTimeout(r, ra?parseInt(ra)*1000:Math.pow(2,attempt)*5000));
+      continue;
+    }
+    return { res };
+  }
+}
+async function callClaudeAI(messages, system, opts={}){
+  if(!CFG.claude) return { error:'NO_KEY', message:'Falta la API Key de Claude' };
+  for(const model of (opts.models||CLAUDE_MODELS)){
+    const body = { model, max_tokens:opts.maxTokens||1000, messages };
+    if(system) body.system = system;
+    const r = await _fetchWithRetry('https://api.anthropic.com/v1/messages', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-api-key':CFG.claude, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' }, body:JSON.stringify(body) }, opts.maxRetries);
+    if(r.error){ if(r.error==='RATE_LIMIT') continue; return r; }
+    const res=r.res;
+    if(res.status===401) return { error:'INVALID_KEY', message:'API Key de Claude inválida' };
+    if(res.status===404||res.status===429) continue;
+    if(!res.ok) return { error:'HTTP_'+res.status, message:'Error HTTP '+res.status };
+    let data; try{ data=await res.json(); }catch(e){ return { error:'EMPTY', message:'Respuesta vacía' }; }
+    const text=(data.content||[]).map(b=>b.text||'').join('\n').trim();
+    if(!text) return { error:'EMPTY', message:'Respuesta vacía' };
+    return { ok:true, text, label:'Claude' };
+  }
+  return { error:'NO_MODEL', message:'Ningún modelo de Claude disponible' };
+}
+async function callGeminiAI(messages, system, opts={}){
+  if(!CFG.gemini) return { error:'NO_KEY', message:'Falta la API Key de Gemini' };
+  const contents = messages.map(m=>({ role: m.role==='assistant'?'model':'user', parts:[{ text:m.content }] }));
+  for(const model of (opts.models||GEMINI_MODELS)){
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CFG.gemini}`;
+    const body = { contents, generationConfig:{ maxOutputTokens: opts.maxTokens||1000 } };
+    if(system) body.systemInstruction = { parts:[{ text:system }] };
+    const r = await _fetchWithRetry(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }, opts.maxRetries);
+    if(r.error){ if(r.error==='RATE_LIMIT') continue; return r; }
+    const res=r.res;
+    if(res.status===400||res.status===403) return { error:'INVALID_KEY', message:'API Key de Gemini inválida' };
+    if(res.status===404||res.status===429) continue;
+    if(!res.ok) return { error:'HTTP_'+res.status, message:'Error HTTP '+res.status };
+    let data; try{ data=await res.json(); }catch(e){ return { error:'EMPTY', message:'Respuesta vacía' }; }
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if(!text) return { error:'EMPTY', message:'Respuesta vacía' };
+    return { ok:true, text, label:'Gemini' };
+  }
+  return { error:'NO_MODEL', message:'Ningún modelo de Gemini disponible' };
+}
+async function _callOpenAICompatibleAI(messages, system, apiKey, models, endpoint, label, opts={}){
+  if(!apiKey) return { error:'NO_KEY', message:`Falta la API Key de ${label}` };
+  const msgs = system ? [{ role:'system', content:system }, ...messages] : messages;
+  for(const model of models){
+    const r = await _fetchWithRetry(endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey }, body:JSON.stringify({ model, messages:msgs, max_tokens:opts.maxTokens||1000 }) }, opts.maxRetries);
+    if(r.error){ if(r.error==='RATE_LIMIT') continue; return r; }
+    const res=r.res;
+    if(res.status===401) return { error:'INVALID_KEY', message:`API Key de ${label} inválida` };
+    if(res.status===404||res.status===429) continue;
+    if(!res.ok) return { error:'HTTP_'+res.status, message:'Error HTTP '+res.status };
+    let data; try{ data=await res.json(); }catch(e){ return { error:'EMPTY', message:'Respuesta vacía' }; }
+    const text = data?.choices?.[0]?.message?.content;
+    if(!text) return { error:'EMPTY', message:'Respuesta vacía' };
+    return { ok:true, text, label };
+  }
+  return { error:'NO_MODEL', message:`Ningún modelo de ${label} disponible` };
+}
+const callChatGPTAI = (messages, system, opts={}) => _callOpenAICompatibleAI(messages, system, CFG.chatgpt, opts.models||CHATGPT_MODELS, 'https://api.openai.com/v1/chat/completions', 'ChatGPT', opts);
+const callGrokAI    = (messages, system, opts={}) => _callOpenAICompatibleAI(messages, system, CFG.grok, opts.models||GROK_MODELS, 'https://api.x.ai/v1/chat/completions', 'Grok', opts);
+async function callAI(messages, system, opts={}){
+  const providers=[];
+  if(CFG.claude)  providers.push(()=>callClaudeAI(messages,system,opts));
+  if(CFG.gemini)  providers.push(()=>callGeminiAI(messages,system,opts));
+  if(CFG.chatgpt) providers.push(()=>callChatGPTAI(messages,system,opts));
+  if(CFG.grok)    providers.push(()=>callGrokAI(messages,system,opts));
+  if(!providers.length) return { error:'NO_KEY', message:'No hay ninguna API Key configurada. Ve a ⚙️ Configuración.' };
+  let last=null;
+  for(const fn of providers){ const r=await fn(); if(r.ok) return r; last=r; }
+  return last || { error:'NO_MODEL', message:'Ningún proveedor respondió' };
+}
+
+// ─── UI de Configuración ────────────────────────────────────────────────────
+const AI_PROVIDERS_META = [
+  { id:'claude',  label:'Claude (Anthropic)', placeholder:'sk-ant-api03-...', help:'console.anthropic.com/settings/keys' },
+  { id:'gemini',  label:'Gemini (Google)',    placeholder:'AIza...',          help:'aistudio.google.com/apikey' },
+  { id:'chatgpt', label:'ChatGPT (OpenAI)',   placeholder:'sk-...',           help:'platform.openai.com/api-keys' },
+  { id:'grok',    label:'Grok (xAI)',         placeholder:'xai-...',          help:'console.x.ai' },
+];
+// Verificación REAL de conexión: llamada mínima real a cada API.
+// Un 429/cuota se reporta como "clave válida"; solo 401/403 se trata como clave inválida.
+async function testApiKeyConnection(providerId, key){
+  const testPrompt = 'Responde únicamente con la palabra OK.';
+  let r;
+  try{
+    if(providerId==='claude'){
+      r = await fetch('https://api.anthropic.com/v1/messages', { method:'POST',
+        headers:{ 'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','x-api-key':key },
+        body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:10, messages:[{role:'user',content:testPrompt}] }) });
+    } else if(providerId==='gemini'){
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, { method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ contents:[{parts:[{text:testPrompt}]}], generationConfig:{maxOutputTokens:10} }) });
+    } else if(providerId==='chatgpt'){
+      r = await fetch('https://api.openai.com/v1/chat/completions', { method:'POST',
+        headers:{ 'Content-Type':'application/json','Authorization':'Bearer '+key },
+        body: JSON.stringify({ model:'gpt-4o-mini', max_tokens:10, messages:[{role:'user',content:testPrompt}] }) });
+    } else if(providerId==='grok'){
+      r = await fetch('https://api.x.ai/v1/chat/completions', { method:'POST',
+        headers:{ 'Content-Type':'application/json','Authorization':'Bearer '+key },
+        body: JSON.stringify({ model:'grok-3-mini', max_tokens:10, messages:[{role:'user',content:testPrompt}] }) });
+    } else { return { ok:false, message:'Proveedor desconocido' }; }
+  }catch(e){ return { ok:false, message:'No se pudo conectar (red sin conexión o bloqueo CORS del navegador)' }; }
+  if(r.status===401||r.status===403) return { ok:false, message:'Clave inválida o sin permisos (401/403)' };
+  if(r.status===429) return { ok:false, message:'Límite de solicitudes alcanzado — la clave sí es válida' };
+  if(r.status===404) return { ok:false, message:'Modelo no disponible para esta clave (404)' };
+  if(!r.ok){
+    let msg='HTTP '+r.status;
+    try{ const e=await r.json(); msg=e?.error?.message||e?.message||msg; }catch(_){}
+    if(/quota|credit|insufficient|billing/i.test(msg)) return { ok:false, message:'Sin crédito/cuota disponible — la clave sí es válida ('+msg+')' };
+    return { ok:false, message:msg };
+  }
+  return { ok:true, message:'Conexión verificada correctamente ✅' };
+}
+function renderApiProvidersUI(){
+  const list = document.getElementById('apiProvidersList');
+  if(!list) return;
+  list.innerHTML = AI_PROVIDERS_META.map(p => `
+    <div class="provider-row">
+      <div class="provider-label">${p.label}</div>
+      <div class="apikey-field-wrap">
+        <input class="apikey-field" id="apikey-input-${p.id}" type="password" placeholder="${p.placeholder}" autocomplete="off" spellcheck="false" />
+        <button class="apikey-eye" data-eye="${p.id}" type="button">👁</button>
+      </div>
+      <div class="apikey-status-row">
+        <div class="apikey-status-dot" id="apikey-dot-${p.id}"></div>
+        <span id="apikey-status-text-${p.id}">Sin clave</span>
+      </div>
+      <div class="apikey-btns">
+        <button class="btn-save-key" data-save="${p.id}" type="button">💾 Guardar</button>
+        <button class="btn-test-key" data-test="${p.id}" type="button">🧪 Probar</button>
+        <button class="btn-del-key" data-del="${p.id}" type="button">🗑 Borrar</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Obtén tu clave en <strong>${p.help}</strong></div>
+    </div>
+  `).join('');
+  AI_PROVIDERS_META.forEach(p => {
+    const saved = CFG[p.id];
+    const dot = document.getElementById('apikey-dot-'+p.id);
+    const txt = document.getElementById('apikey-status-text-'+p.id);
+    const inp = document.getElementById('apikey-input-'+p.id);
+    if(saved){ dot.classList.add('has-key'); txt.textContent='✓ Clave guardada'; inp.value=saved; }
+    else { dot.classList.remove('has-key'); txt.textContent='Sin clave configurada'; inp.value=''; }
+    list.querySelector(`[data-eye="${p.id}"]`).addEventListener('click', () => { inp.type = inp.type==='password' ? 'text' : 'password'; });
+    list.querySelector(`[data-save="${p.id}"]`).addEventListener('click', async () => {
+      const val = inp.value.trim();
+      if(!val){ showToast('Ingresa una API key primero'); return; }
+      if(cfgValidateKey(p.id, val) === false){ showToast('⚠️ Formato de clave no reconocido para ' + p.label); }
+      CFG[p.id] = val; cfgSaveLocal(); renderApiProvidersUI();
+      showToast('✓ API Key de ' + p.label + ' guardada, verificando conexión…');
+      const dot2=document.getElementById('apikey-dot-'+p.id), txt2=document.getElementById('apikey-status-text-'+p.id);
+      if(dot2){ dot2.classList.remove('has-key','error'); dot2.classList.add('testing'); }
+      if(txt2) txt2.textContent='🔄 Verificando conexión…';
+      const result = await testApiKeyConnection(p.id, val);
+      if(dot2) dot2.classList.remove('testing');
+      if(result.ok){ if(dot2){ dot2.classList.remove('error'); dot2.classList.add('has-key'); } if(txt2) txt2.textContent='✓ Conectado'; showToast(`✓ Conexión con ${p.label} verificada`); }
+      else{ if(dot2){ dot2.classList.remove('has-key'); dot2.classList.add('error'); } if(txt2) txt2.textContent='✗ '+result.message; showToast(`⚠️ Clave guardada, pero la conexión con ${p.label} falló`); }
+    });
+    list.querySelector(`[data-test="${p.id}"]`).addEventListener('click', async () => {
+      const val = inp.value.trim() || CFG[p.id];
+      if(!val){ showToast('Ingresa una API key primero'); return; }
+      const dot2=document.getElementById('apikey-dot-'+p.id), txt2=document.getElementById('apikey-status-text-'+p.id);
+      if(dot2){ dot2.classList.remove('has-key','error'); dot2.classList.add('testing'); }
+      if(txt2) txt2.textContent='🔄 Verificando conexión…';
+      const result = await testApiKeyConnection(p.id, val);
+      if(dot2) dot2.classList.remove('testing');
+      if(result.ok){ if(dot2){ dot2.classList.remove('error'); if(CFG[p.id]) dot2.classList.add('has-key'); } if(txt2) txt2.textContent='✓ '+result.message; showToast(`✓ Conexión con ${p.label} funcionando`); }
+      else{ if(dot2){ dot2.classList.remove('has-key'); dot2.classList.add('error'); } if(txt2) txt2.textContent='✗ '+result.message; showToast(`✗ Falló la conexión con ${p.label}`); }
+    });
+    list.querySelector(`[data-del="${p.id}"]`).addEventListener('click', () => {
+      CFG[p.id] = ''; cfgSaveLocal(); renderApiProvidersUI();
+      showToast('Clave de ' + p.label + ' borrada');
+    });
+  });
+}
+function openSettings(){ renderApiProvidersUI(); document.getElementById('settingsOverlay').classList.add('open'); }
+function closeSettings(){ document.getElementById('settingsOverlay').classList.remove('open'); }
+cfgLoad();
+
 function toggleTheme(){
   const html = document.documentElement;
   const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -330,17 +577,9 @@ async function ejecutar(tipo){
 
   try{
     const prompt = PROMPTS[tipo].replace('{TEXTO}', texto);
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-    const data = await response.json();
-    const text = (data.content || []).map(b => b.text || '').join('\n').trim();
+    const r = await callAI([{ role:'user', content: prompt }], null, { maxTokens: 1000 });
+    if(!r.ok) throw new Error(r.message || 'Error de IA');
+    const text = r.text;
 
     document.getElementById(loadingId).outerHTML = `
       <div class="result-card" id="${resId}">${text.replace(/</g,'&lt;')}</div>
@@ -349,7 +588,7 @@ async function ejecutar(tipo){
       </div>
     `;
   }catch(err){
-    document.getElementById(loadingId).outerHTML = `<div class="result-card" style="color:var(--red);">Ocurrió un error al generar la respuesta. Intenta nuevamente.</div>`;
+    document.getElementById(loadingId).outerHTML = `<div class="result-card" style="color:var(--red);">${err.message && err.message.includes('API Key') ? err.message : 'Ocurrió un error al generar la respuesta. Intenta nuevamente.'}</div>`;
   }finally{
     document.getElementById('btnPasos').disabled = false;
     document.getElementById('btnMsg').disabled = false;
