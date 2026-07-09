@@ -298,15 +298,21 @@ textarea.inp{resize:vertical;min-height:160px;line-height:1.6;}
 // email+contraseña real desde ⚙️ Configuración > Cuenta para usar las mismas
 // preferencias en otro celular o computadora.
 
-const firebaseConfig = {
-  apiKey: "AIzaSyATTrYMqivDJGLhQYDDjEqLCyv-YEMSK2A",
-  authDomain: "nexus-pro-plus.firebaseapp.com",
-  projectId: "nexus-pro-plus",
-  storageBucket: "nexus-pro-plus.firebasestorage.app",
-  messagingSenderId: "5726048688",
-  appId: "1:5726048688:web:04ca5f364dcc2e40008675",
-  measurementId: "G-SPZ7NDEHWS"
-};
+const firebaseConfig = (function(){
+  var LS_KEY = 'fbcfg_nexus_flash';
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch(e) { saved = null; }
+  if (saved && saved.apiKey) return saved;
+  var pasted = window.prompt('Configuracion de Firebase para Nexus Flash (solo la primera vez en este dispositivo).\nPega aqui el JSON de configuracion:');
+  if (pasted) {
+    try {
+      var cfg = JSON.parse(pasted);
+      localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+      return cfg;
+    } catch(e) { console.warn('Configuracion de Firebase invalida, la sincronizacion quedara desactivada.'); }
+  }
+  return { apiKey:'', authDomain:'', projectId:'', storageBucket:'', messagingSenderId:'', appId:'' };
+})();
 
 let fbAuth=null, fbDb=null, fbUser=null, fbUserDocRef=null, fbCloudReady=false;
 let fbSyncTimer=null, fbApplyingRemote=false;
