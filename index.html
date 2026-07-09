@@ -138,18 +138,82 @@ textarea.inp{resize:vertical;min-height:160px;line-height:1.6;}
 .btn-test-key:hover{border-color:var(--accent);color:var(--accent);}
 .btn-del-key:hover{border-color:var(--red);color:var(--red);}
 .settings-close-btn{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--text);cursor:pointer;margin-top:8px;width:100%;}
+
+/* ══════════ IDIOMA ══════════ */
+.flag-ico{width:18px;height:13px;border-radius:2px;vertical-align:middle;margin-right:2px;box-shadow:0 0 0 1px rgba(255,255,255,0.08);flex-shrink:0;}
+.lang-sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:400;align-items:flex-end;justify-content:center;}
+.lang-sheet-overlay.open{display:flex;}
+.lang-sheet{background:var(--panel);border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:12px 8px 20px;animation:slideUpSheet .25s ease;}
+@keyframes slideUpSheet{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.lang-sheet-handle{width:36px;height:4px;background:var(--line);border-radius:2px;margin:4px auto 12px;}
+.lang-sheet-title{font-size:15px;font-weight:700;padding:0 12px 10px;}
+.lang-opt{display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:12px;font-size:14px;color:var(--text);cursor:pointer;}
+.lang-opt:hover{background:var(--panel-2);}
+.lang-opt.selected{background:var(--accent-dim);color:var(--accent);font-weight:600;}
+.settings-chip{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid var(--line);background:var(--panel-2);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .2s;}
+.settings-chip.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);font-weight:600;}
+
+/* ══════════ ESTÁNDAR DE DISEÑO — SOLO VISUAL ══════════ */
+@media (min-width: 901px) {
+  .wrap { max-width: 780px; }
+  body { zoom: 1.15; }
+}
 </style>
+<!-- Firebase (SDK compat: funciona con etiquetas de script planas, sin bundler) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
 </head>
 <body>
+<style>
+  .auth-gate-overlay{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;
+    background:rgba(6,10,16,.92);backdrop-filter:blur(6px);padding:20px;}
+  .auth-gate-box{width:100%;max-width:380px;background:#0e1620;border:1px solid rgba(0,245,196,.25);
+    border-radius:18px;padding:28px 24px;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .auth-gate-box h2{margin:0 0 6px;font-size:1.25rem;color:#f2f6f8;}
+  .auth-gate-sub{margin:0 0 20px;color:#8a97a3;font-size:.85rem;}
+  .auth-gate-box input{width:100%;box-sizing:border-box;margin-bottom:10px;padding:11px 12px;border-radius:10px;
+    border:1px solid rgba(255,255,255,.12);background:#141d29;color:#f2f6f8;font-size:.95rem;}
+  .auth-gate-btn{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:none;
+    font-weight:600;font-size:.9rem;cursor:pointer;margin-bottom:10px;}
+  .auth-gate-btn.google{background:#fff;color:#1f1f1f;}
+  .auth-gate-btn.primary{background:#00F5C4;color:#052018;}
+  .auth-gate-btn.neutral{background:#1c2733;color:#e8eef2;border:1px solid rgba(255,255,255,.1);}
+  .auth-gate-row{display:flex;gap:8px;}
+  .auth-gate-row .auth-gate-btn{margin-bottom:0;}
+  .auth-gate-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#5c6975;font-size:.75rem;}
+  .auth-gate-divider::before,.auth-gate-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.1);}
+  .auth-gate-msg{margin-top:8px;font-size:.8rem;min-height:16px;line-height:1.4;}
+</style>
+<div id="authGateOverlay" class="auth-gate-overlay">
+  <div class="auth-gate-box">
+    <h2>🔒 Inicia sesión para continuar</h2>
+    <p class="auth-gate-sub">Tus datos se guardan de forma segura y sincronizada entre tus dispositivos.</p>
+    <button id="gateGoogleBtn" class="auth-gate-btn google" type="button">🔵 Continuar con Google</button>
+    <div class="auth-gate-divider"><span>o con tu email</span></div>
+    <input type="email" id="gateEmail" placeholder="tu@email.com" autocomplete="email">
+    <input type="password" id="gatePass" placeholder="Contraseña (mínimo 6 caracteres)" autocomplete="current-password">
+    <div class="auth-gate-row">
+      <button id="gateLoginBtn" class="auth-gate-btn primary" type="button">Iniciar sesión</button>
+      <button id="gateRegisterBtn" class="auth-gate-btn neutral" type="button">Crear cuenta</button>
+    </div>
+    <div class="auth-gate-divider"><span>o sin contraseña</span></div>
+    <button id="gateLinkBtn" class="auth-gate-btn neutral" type="button">✉️ Enviarme un enlace de acceso</button>
+    <div id="gateMsg" class="auth-gate-msg"></div>
+  </div>
+</div>
+
 
 <div class="topbar">
   <div class="topbar-left">
     <div class="app-logo">⚡</div>
     <div>
       <div class="app-name">Nexus Flash</div>
-      <div class="app-sub">Análisis y acciones rápidas</div>
+      <div class="app-sub" data-i18n="appSub">Análisis y acciones rápidas</div>
     </div>
   </div>
+  <button class="icon-btn lang-btn" id="langBtn" onclick="openLangSheet()" title="Idioma">🌐 <span id="langBtnLabel" style="font-size:10px;">ES</span></button>
   <button class="icon-btn" id="settingsBtn" onclick="openSettings()" title="Configuración">⚙️</button>
   <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
 </div>
@@ -157,26 +221,46 @@ textarea.inp{resize:vertical;min-height:160px;line-height:1.6;}
 <div class="settings-overlay" id="settingsOverlay">
   <div class="settings-modal">
     <div class="settings-modal-head">
-      <div class="settings-modal-title">⚙️ Configuración · APIs de IA</div>
+      <div class="settings-modal-title" data-i18n="settingsModalTitle">⚙️ Configuración · APIs de IA</div>
     </div>
-    <div class="settings-modal-sub">Configura una o varias. Se usa la primera disponible y si falla se pasa automáticamente a la siguiente.</div>
+    <div class="settings-modal-sub" data-i18n="settingsModalSub">Configura una o varias. Se usa la primera disponible y si falla se pasa automáticamente a la siguiente.</div>
     <div id="apiProvidersList"></div>
-    <button class="settings-close-btn" onclick="closeSettings()">Cerrar</button>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;" data-i18n="settingsRespLang">Idioma de respuesta (IA)</div>
+      <div id="respLangChips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">☁️ Cuenta y sincronización</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.5;margin-bottom:10px;" id="accountStatusBox">Conectando…</div>
+      <div style="display:flex;flex-direction:column;gap:8px;" id="accountLinkForm">
+        <input class="apikey-field" id="accountEmail" type="email" placeholder="tu@email.com" autocomplete="email" style="width:100%;"/>
+        <input class="apikey-field" id="accountPass" type="password" placeholder="Contraseña (mínimo 6 caracteres)" autocomplete="new-password" style="width:100%;"/>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+          <button class="btn-primary" id="accountCreateBtn" style="flex:1;">☁️ Crear cuenta</button>
+          <button class="btn-ghost" id="accountLoginBtn" style="flex:1;">🔑 Ya tengo cuenta</button>
+        </div>
+      </div>
+      <button class="btn-ghost" id="accountSignoutBtn" style="display:none;width:100%;margin-top:6px;">🚪 Cerrar sesión</button>
+    </div>
+
+    <button class="settings-close-btn" onclick="closeSettings()" data-i18n="btnCerrar">Cerrar</button>
   </div>
 </div>
 
 <div class="wrap">
 
   <div class="card">
-    <div class="section-title">Situación actual</div>
-    <textarea class="inp" id="situacion" placeholder="Describe el comentario del cliente o la situación actual del proceso de venta…"></textarea>
+    <div class="section-title" data-i18n="sectionTitleSituacion">Situación actual</div>
+    <textarea class="inp" id="situacion" data-i18n-ph="phSituacion" placeholder="Describe el comentario del cliente o la situación actual del proceso de venta…"></textarea>
     <div class="btn-row">
-      <button class="btn-primary" id="btnPasos" onclick="ejecutar('pasos')">🎯 Siguientes pasos</button>
-      <button class="btn-primary" id="btnMsg" onclick="ejecutar('mensaje')">✍️ Redactar mensaje</button>
+      <button class="btn-primary" id="btnPasos" onclick="ejecutar('pasos')" data-i18n="btnPasos">🎯 Siguientes pasos</button>
+      <button class="btn-primary" id="btnMsg" onclick="ejecutar('mensaje')" data-i18n="btnMsg">✍️ Redactar mensaje</button>
     </div>
     <div class="btn-row">
-      <button class="btn-ghost" onclick="limpiarTexto()" style="flex:1;">🔄 Nueva consulta</button>
-      <button class="btn-ghost" onclick="limpiarFormulario()" style="flex:1;">🗑️ Borrar datos</button>
+      <button class="btn-ghost" onclick="limpiarTexto()" style="flex:1;" data-i18n="btnNuevaConsulta">🔄 Nueva consulta</button>
+      <button class="btn-ghost" onclick="limpiarFormulario()" style="flex:1;" data-i18n="btnBorrarDatos">🗑️ Borrar datos</button>
     </div>
   </div>
 
@@ -184,10 +268,705 @@ textarea.inp{resize:vertical;min-height:160px;line-height:1.6;}
 
 </div>
 
+<!-- LANG SHEET -->
+<div class="lang-sheet-overlay" id="langSheetOverlay" onclick="if(event.target===this) closeLangSheet()">
+  <div class="lang-sheet" id="langSheet">
+    <div class="lang-sheet-handle"></div>
+    <div class="lang-sheet-title">🌐 <span data-i18n="modalUiLangTitle">Idioma de interfaz</span></div>
+    <div id="langSheetList" style="max-height:60vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
+// ════════════════════════════════════════════════════════════════════════════
+// ══ MÓDULO NUBE (Firebase: Auth + Firestore) ══════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// Nexus Flash es una app chica: lo único que persiste hoy es el idioma de
+// interfaz, el idioma de respuesta de la IA y el tema (claro/oscuro). Eso es
+// justo lo que sincronizo entre dispositivos vía Firestore. Los resultados
+// (tarjetas de "siguientes pasos" / "mensaje sugerido") viven solo en memoria
+// mientras la pestaña está abierta — nunca se guardan, ni local ni en la nube,
+// así que no hay nada de eso que sincronizar.
+// Las 4 API keys de IA (Claude/Gemini/ChatGPT/Grok) también se sincronizan vía
+// Firestore (campo apiKeys) para que estén disponibles al iniciar sesión desde
+// otro dispositivo/navegador — y comparten proyecto con el resto de la familia
+// Nexus, así que aparecen igual en Nexus.html, Nexus Pro, VentaMinds y el CRM.
+//
+// Auth: sesión anónima automática al abrir la app; se puede vincular a un
+// email+contraseña real desde ⚙️ Configuración > Cuenta para usar las mismas
+// preferencias en otro celular o computadora.
+
+const firebaseConfig = {
+  apiKey: "AIzaSyATTrYMqivDJGLhQYDDjEqLCyv-YEMSK2A",
+  authDomain: "nexus-pro-plus.firebaseapp.com",
+  projectId: "nexus-pro-plus",
+  storageBucket: "nexus-pro-plus.firebasestorage.app",
+  messagingSenderId: "5726048688",
+  appId: "1:5726048688:web:04ca5f364dcc2e40008675",
+  measurementId: "G-SPZ7NDEHWS"
+};
+
+let fbAuth=null, fbDb=null, fbUser=null, fbUserDocRef=null, fbCloudReady=false;
+let fbSyncTimer=null, fbApplyingRemote=false;
+const FB_PENDING={};
+
+// ─── Auth Gate: exige inicio de sesión real en navegador (no aplica en modo artefacto) ──
+const AUTH_GATE_EMAIL_KEY = 'nexusAuthGateEmail';
+
+function showAuthGate(){ const el=document.getElementById('authGateOverlay'); if(el) el.style.display='flex'; }
+function hideAuthGate(){ const el=document.getElementById('authGateOverlay'); if(el) el.style.display='none'; }
+function gateMsg(text, isError){
+  const m=document.getElementById('gateMsg'); if(!m) return;
+  m.textContent = text||''; m.style.color = isError ? '#ff6b6b' : '#00F5C4';
+}
+async function gateSignInGoogle(){
+  try{ await fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+  catch(e){ gateMsg('No se pudo iniciar sesión con Google: '+(e.message||e.code), true); }
+}
+async function gateSignInEmail(){
+  const email=(document.getElementById('gateEmail').value||'').trim();
+  const pass=document.getElementById('gatePass').value||'';
+  if(!email||!pass){ gateMsg('Escribe email y contraseña.', true); return; }
+  try{ await fbAuth.signInWithEmailAndPassword(email, pass); }
+  catch(e){ gateMsg('No se pudo iniciar sesión: '+(e.message||e.code), true); }
+}
+async function gateRegisterEmail(){
+  const email=(document.getElementById('gateEmail').value||'').trim();
+  const pass=document.getElementById('gatePass').value||'';
+  if(!email||!pass){ gateMsg('Escribe email y contraseña.', true); return; }
+  try{ await fbAuth.createUserWithEmailAndPassword(email, pass); }
+  catch(e){
+    if(e.code==='auth/email-already-in-use') gateMsg('Ese email ya tiene cuenta. Usa "Iniciar sesión".', true);
+    else if(e.code==='auth/weak-password') gateMsg('La contraseña debe tener al menos 6 caracteres.', true);
+    else gateMsg('No se pudo crear la cuenta: '+(e.message||e.code), true);
+  }
+}
+async function gateSendEmailLink(){
+  const email=(document.getElementById('gateEmail').value||'').trim();
+  if(!email){ gateMsg('Escribe tu email para enviarte el enlace.', true); return; }
+  const actionCodeSettings = { url: window.location.href.split('#')[0], handleCodeInApp: true };
+  try{
+    await fbAuth.sendSignInLinkToEmail(email, actionCodeSettings);
+    window.localStorage.setItem(AUTH_GATE_EMAIL_KEY, email);
+    gateMsg('✅ Te enviamos un enlace a '+email+'. Ábrelo desde este mismo navegador para entrar.', false);
+  }catch(e){ gateMsg('No se pudo enviar el enlace: '+(e.message||e.code), true); }
+}
+async function gateCompleteEmailLinkIfNeeded(){
+  try{
+    if(fbAuth.isSignInWithEmailLink(window.location.href)){
+      let email = window.localStorage.getItem(AUTH_GATE_EMAIL_KEY);
+      if(!email) email = window.prompt('Confirma tu email para completar el acceso:');
+      if(email){
+        await fbAuth.signInWithEmailLink(email, window.location.href);
+        window.localStorage.removeItem(AUTH_GATE_EMAIL_KEY);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }catch(e){ console.warn('[Nube] No se pudo completar el acceso por enlace:', e); }
+}
+function initAuthGate(){
+  const map=[['gateGoogleBtn',gateSignInGoogle],['gateLoginBtn',gateSignInEmail],
+             ['gateRegisterBtn',gateRegisterEmail],['gateLinkBtn',gateSendEmailLink]];
+  map.forEach(([id,fn])=>{ const b=document.getElementById(id); if(b) b.addEventListener('click', fn); });
+}
+
+function initFirebaseCloud(){
+  if(typeof firebase==='undefined'){
+    // Entorno sin acceso al SDK de Firebase (ej. visor de artifacts, sin internet) — silencioso, no es un error real.
+    renderAccountUI();
+    return;
+  }
+  try{
+    firebase.initializeApp(firebaseConfig);
+    try{ firebase.analytics(); }catch(e){}
+    fbAuth = firebase.auth();
+    fbDb = firebase.firestore();
+    fbDb.enablePersistence({synchronizeTabs:true}).catch(err=>{
+      console.warn('[Nube] Persistencia offline no disponible:', err.code||err);
+    });
+    initAuthGate();
+    gateCompleteEmailLinkIfNeeded().finally(()=>{
+      fbAuth.onAuthStateChanged(async (user)=>{
+        if(user){
+          hideAuthGate();
+          fbUser = user;
+          fbUserDocRef = fbDb.collection('usuarios').doc(user.uid);
+          await fbLoadRemoteState();
+          fbListenRemoteState();
+          fbCloudReady = true;
+          renderAccountUI();
+        } else {
+          // Ya no se crea sesión anónima automática: en navegador real se exige login (Google, email+contraseña o enlace por correo)
+          fbCloudReady = false;
+          showAuthGate();
+        }
+      });
+    });
+  }catch(e){
+    // Esto sí es un error real (config, cuota, reglas, etc.), no un bloqueo de entorno
+    console.warn('[Nube] Firebase falló al inicializar:', e);
+  }
+}
+
+async function fbLoadRemoteState(){
+  try{
+    const snap = await fbUserDocRef.get();
+    if(snap.exists){
+      fbApplyRemoteData(snap.data());
+    } else {
+      await fbUserDocRef.set({ creado: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
+    }
+  }catch(e){ console.warn('[Nube] No se pudo leer el estado remoto:',e); }
+}
+
+function fbListenRemoteState(){
+  fbUserDocRef.onSnapshot(snap=>{
+    if(snap.metadata.hasPendingWrites) return; // eco de nuestra propia escritura: ignorar
+    if(snap.exists) fbApplyRemoteData(snap.data());
+  }, err=>console.warn('[Nube] Error en la sincronización en vivo:',err));
+}
+
+function fbApplyRemoteData(d){
+  fbApplyingRemote = true;
+  try{
+    if(typeof d.uiLang==='string' && d.uiLang!==currentUiLang) applyUiLang(d.uiLang);
+    if(typeof d.respLang==='string' && d.respLang!==currentRespLang){ setRespLang(d.respLang); }
+    if(typeof d.theme==='string'){
+      document.documentElement.dataset.theme = d.theme;
+      try{ localStorage.setItem('nexusflash_theme', d.theme); }catch(e){}
+      const btn=document.getElementById('themeBtn'); if(btn) btn.textContent = d.theme==='dark' ? '☀️' : '🌙';
+    }
+    if(d.apiKeys && typeof d.apiKeys==='object'){
+      let cambioKeys=false;
+      Object.keys(CFG).forEach(provider=>{
+        const remoteVal = d.apiKeys[provider];
+        if(typeof remoteVal==='string' && remoteVal && remoteVal!==CFG[provider]){
+          CFG[provider]=remoteVal; cambioKeys=true;
+        }
+      });
+      if(cambioKeys){
+        cfgSaveLocal();
+        if(typeof renderApiProvidersUI==='function') renderApiProvidersUI();
+      }
+    }
+  } finally { fbApplyingRemote = false; }
+}
+
+function fbQueueWrite(fields){
+  if(fbApplyingRemote) return; // no reenviar lo que acabamos de recibir de la nube
+  Object.assign(FB_PENDING, fields);
+  if(fbSyncTimer) clearTimeout(fbSyncTimer);
+  fbSyncTimer = setTimeout(fbFlushWrites, 600);
+}
+
+async function fbFlushWrites(){
+  if(!fbUserDocRef) return;
+  const payload = {...FB_PENDING};
+  Object.keys(FB_PENDING).forEach(k=>delete FB_PENDING[k]);
+  try{ await fbUserDocRef.set(payload, {merge:true}); }catch(e){ console.warn('[Nube] Error guardando en la nube:',e); }
+}
+
+// ─── Cuenta: vincular sesión anónima a email/contraseña, o iniciar sesión ────
+function renderAccountUI(){
+  const box = document.getElementById('accountStatusBox');
+  if(!box || !fbUser) return;
+  const linked = !fbUser.isAnonymous;
+  box.textContent = linked
+    ? '✓ Conectado como '+fbUser.email+' — tus preferencias y tus API keys se sincronizan en todos tus dispositivos.'
+    : 'Usando la app como invitado en este dispositivo. Crea una cuenta para llevar tus preferencias y tus API keys a otro celular o PC.';
+  const linkForm = document.getElementById('accountLinkForm');
+  const signoutBtn = document.getElementById('accountSignoutBtn');
+  if(linkForm) linkForm.style.display = linked ? 'none' : 'flex';
+  if(signoutBtn) signoutBtn.style.display = linked ? 'inline-flex' : 'none';
+}
+
+async function fbCrearCuenta(email, pass){
+  try{
+    const cred = firebase.auth.EmailAuthProvider.credential(email, pass);
+    await fbUser.linkWithCredential(cred);
+    showToast('✅ Cuenta creada. Ya puedes entrar desde otro dispositivo con este email.');
+    renderAccountUI();
+  }catch(e){
+    if(e.code==='auth/email-already-in-use') showToast('Ese email ya tiene cuenta. Usa "Ya tengo cuenta" para iniciar sesión.');
+    else if(e.code==='auth/weak-password') showToast('La contraseña debe tener al menos 6 caracteres.');
+    else showToast('No se pudo crear la cuenta: '+(e.message||e.code));
+  }
+}
+async function fbIniciarSesion(email, pass){
+  try{
+    await fbAuth.signInWithEmailAndPassword(email, pass);
+    showToast('✅ Sesión iniciada. Cargando tus preferencias…');
+  }catch(e){ showToast('No se pudo iniciar sesión: '+(e.message||e.code)); }
+}
+function fbCerrarSesion(){
+  fbAuth.signOut(); // onAuthStateChanged detecta el logout y vuelve a mostrar el gate de acceso
+  showToast('Sesión cerrada.');
+}
+function initAccountUI(){
+  const btnCrear = document.getElementById('accountCreateBtn');
+  const btnEntrar = document.getElementById('accountLoginBtn');
+  const btnSalir = document.getElementById('accountSignoutBtn');
+  const emailInput = document.getElementById('accountEmail');
+  const passInput = document.getElementById('accountPass');
+  if(btnCrear) btnCrear.addEventListener('click', ()=>{
+    const email=(emailInput.value||'').trim(), pass=passInput.value||'';
+    if(!email||!pass) return showToast('Escribe email y contraseña.');
+    fbCrearCuenta(email, pass);
+  });
+  if(btnEntrar) btnEntrar.addEventListener('click', ()=>{
+    const email=(emailInput.value||'').trim(), pass=passInput.value||'';
+    if(!email||!pass) return showToast('Escribe email y contraseña.');
+    fbIniciarSesion(email, pass);
+  });
+  if(btnSalir) btnSalir.addEventListener('click', fbCerrarSesion);
+}
+// ══ FIN MÓDULO NUBE ══════════════════════════════════════════════════════════
+
 // ─── CONFIGURACIÓN MULTI-IA (Claude / Gemini / ChatGPT / Grok con fallback) ────
+const I18N = {
+  es: {
+    appSub: `Análisis y acciones rápidas`,
+    btnBorrarDatos: `🗑️ Borrar datos`,
+    btnCerrar: `Cerrar`,
+    btnCopiado: `✅ Copiado`,
+    btnCopiar: `📋 Copiar`,
+    btnMsg: `✍️ Redactar mensaje`,
+    btnNuevaConsulta: `🔄 Nueva consulta`,
+    btnPasos: `🎯 Siguientes pasos`,
+    deleteBtnTitle: `Eliminar`,
+    errGenerico: `Ocurrió un error al generar la respuesta. Intenta nuevamente.`,
+    labelMensajeSugerido: `✍️ Mensaje sugerido`,
+    loadingLbl: `Analizando…`,
+    modalUiLangTitle: `Idioma de interfaz`,
+    phSituacion: `Describe el comentario del cliente o la situación actual del proceso de venta…`,
+    sectionTitleSituacion: `Situación actual`,
+    settingsModalSub: `Configura una o varias. Se usa la primera disponible y si falla se pasa automáticamente a la siguiente.`,
+    settingsModalTitle: `⚙️ Configuración · APIs de IA`,
+    settingsRespLang: `Idioma de respuesta (IA)`,
+    tagMensaje: `Mensaje`,
+    tagPasos: `Pasos`,
+    toastDatosBorrados: `🗑️ Datos borrados`,
+    toastEscribeSituacion: `⚠️ Escribe la situación primero`,
+    toastNoCopiar: `⚠️ No se pudo copiar`,
+    toastNuevaConsultaOk: `🔄 Nueva consulta, resultados conservados`,
+    toastTarjetaEliminada: `🗑️ Tarjeta eliminada`,
+  },
+  en: {
+    appSub: `Fast analysis and actions`,
+    btnBorrarDatos: `🗑️ Clear data`,
+    btnCerrar: `Close`,
+    btnCopiado: `✅ Copied`,
+    btnCopiar: `📋 Copy`,
+    btnMsg: `✍️ Draft message`,
+    btnNuevaConsulta: `🔄 New query`,
+    btnPasos: `🎯 Next steps`,
+    deleteBtnTitle: `Delete`,
+    errGenerico: `An error occurred generating the response. Please try again.`,
+    labelMensajeSugerido: `✍️ Suggested message`,
+    loadingLbl: `Analyzing…`,
+    modalUiLangTitle: `Interface language`,
+    phSituacion: `Describe the client's comment or the current status of the sales process…`,
+    sectionTitleSituacion: `Current situation`,
+    settingsModalSub: `Set up one or several. The first available one is used, and if it fails it automatically falls back to the next.`,
+    settingsModalTitle: `⚙️ Settings · AI APIs`,
+    settingsRespLang: `Response language (AI)`,
+    tagMensaje: `Message`,
+    tagPasos: `Steps`,
+    toastDatosBorrados: `🗑️ Data cleared`,
+    toastEscribeSituacion: `⚠️ Write the situation first`,
+    toastNoCopiar: `⚠️ Couldn't copy`,
+    toastNuevaConsultaOk: `🔄 New query, results kept`,
+    toastTarjetaEliminada: `🗑️ Card deleted`,
+  },
+  de: {
+    appSub: `Schnelle Analyse und Aktionen`,
+    btnBorrarDatos: `🗑️ Daten löschen`,
+    btnCerrar: `Schließen`,
+    btnCopiado: `✅ Kopiert`,
+    btnCopiar: `📋 Kopieren`,
+    btnMsg: `✍️ Nachricht verfassen`,
+    btnNuevaConsulta: `🔄 Neue Anfrage`,
+    btnPasos: `🎯 Nächste Schritte`,
+    deleteBtnTitle: `Löschen`,
+    errGenerico: `Bei der Erstellung der Antwort ist ein Fehler aufgetreten. Bitte versuche es erneut.`,
+    labelMensajeSugerido: `✍️ Vorgeschlagene Nachricht`,
+    loadingLbl: `Analysiere…`,
+    modalUiLangTitle: `Oberflächensprache`,
+    phSituacion: `Beschreibe den Kommentar des Kunden oder den aktuellen Stand des Verkaufsprozesses…`,
+    sectionTitleSituacion: `Aktuelle Situation`,
+    settingsModalSub: `Richte eine oder mehrere ein. Die erste verfügbare wird verwendet; bei Fehlschlag wird automatisch zur nächsten gewechselt.`,
+    settingsModalTitle: `⚙️ Einstellungen · KI-APIs`,
+    settingsRespLang: `Antwortsprache (KI)`,
+    tagMensaje: `Nachricht`,
+    tagPasos: `Schritte`,
+    toastDatosBorrados: `🗑️ Daten gelöscht`,
+    toastEscribeSituacion: `⚠️ Schreibe zuerst die Situation`,
+    toastNoCopiar: `⚠️ Kopieren fehlgeschlagen`,
+    toastNuevaConsultaOk: `🔄 Neue Anfrage, Ergebnisse behalten`,
+    toastTarjetaEliminada: `🗑️ Karte gelöscht`,
+  },
+  fr: {
+    appSub: `Analyse et actions rapides`,
+    btnBorrarDatos: `🗑️ Effacer les données`,
+    btnCerrar: `Fermer`,
+    btnCopiado: `✅ Copié`,
+    btnCopiar: `📋 Copier`,
+    btnMsg: `✍️ Rédiger un message`,
+    btnNuevaConsulta: `🔄 Nouvelle requête`,
+    btnPasos: `🎯 Prochaines étapes`,
+    deleteBtnTitle: `Supprimer`,
+    errGenerico: `Une erreur s'est produite lors de la génération de la réponse. Réessaie.`,
+    labelMensajeSugerido: `✍️ Message suggéré`,
+    loadingLbl: `Analyse en cours…`,
+    modalUiLangTitle: `Langue de l'interface`,
+    phSituacion: `Décris le commentaire du client ou la situation actuelle du processus de vente…`,
+    sectionTitleSituacion: `Situation actuelle`,
+    settingsModalSub: `Configure-en une ou plusieurs. La première disponible est utilisée ; en cas d'échec, bascule automatiquement vers la suivante.`,
+    settingsModalTitle: `⚙️ Paramètres · APIs IA`,
+    settingsRespLang: `Langue de réponse (IA)`,
+    tagMensaje: `Message`,
+    tagPasos: `Étapes`,
+    toastDatosBorrados: `🗑️ Données effacées`,
+    toastEscribeSituacion: `⚠️ Écris d'abord la situation`,
+    toastNoCopiar: `⚠️ Impossible de copier`,
+    toastNuevaConsultaOk: `🔄 Nouvelle requête, résultats conservés`,
+    toastTarjetaEliminada: `🗑️ Carte supprimée`,
+  },
+  it: {
+    appSub: `Analisi e azioni rapide`,
+    btnBorrarDatos: `🗑️ Cancella dati`,
+    btnCerrar: `Chiudi`,
+    btnCopiado: `✅ Copiato`,
+    btnCopiar: `📋 Copia`,
+    btnMsg: `✍️ Scrivi messaggio`,
+    btnNuevaConsulta: `🔄 Nuova richiesta`,
+    btnPasos: `🎯 Prossimi passi`,
+    deleteBtnTitle: `Elimina`,
+    errGenerico: `Si è verificato un errore nella generazione della risposta. Riprova.`,
+    labelMensajeSugerido: `✍️ Messaggio suggerito`,
+    loadingLbl: `Analisi in corso…`,
+    modalUiLangTitle: `Lingua dell'interfaccia`,
+    phSituacion: `Descrivi il commento del cliente o la situazione attuale del processo di vendita…`,
+    sectionTitleSituacion: `Situazione attuale`,
+    settingsModalSub: `Configurane una o più. Viene usata la prima disponibile; in caso di errore passa automaticamente alla successiva.`,
+    settingsModalTitle: `⚙️ Impostazioni · API IA`,
+    settingsRespLang: `Lingua di risposta (IA)`,
+    tagMensaje: `Messaggio`,
+    tagPasos: `Passi`,
+    toastDatosBorrados: `🗑️ Dati cancellati`,
+    toastEscribeSituacion: `⚠️ Scrivi prima la situazione`,
+    toastNoCopiar: `⚠️ Impossibile copiare`,
+    toastNuevaConsultaOk: `🔄 Nuova richiesta, risultati conservati`,
+    toastTarjetaEliminada: `🗑️ Scheda eliminata`,
+  },
+  pt: {
+    appSub: `Análise e ações rápidas`,
+    btnBorrarDatos: `🗑️ Apagar dados`,
+    btnCerrar: `Fechar`,
+    btnCopiado: `✅ Copiado`,
+    btnCopiar: `📋 Copiar`,
+    btnMsg: `✍️ Redigir mensagem`,
+    btnNuevaConsulta: `🔄 Nova consulta`,
+    btnPasos: `🎯 Próximos passos`,
+    deleteBtnTitle: `Excluir`,
+    errGenerico: `Ocorreu um erro ao gerar a resposta. Tente novamente.`,
+    labelMensajeSugerido: `✍️ Mensagem sugerida`,
+    loadingLbl: `Analisando…`,
+    modalUiLangTitle: `Idioma da interface`,
+    phSituacion: `Descreva o comentário do cliente ou a situação atual do processo de venda…`,
+    sectionTitleSituacion: `Situação atual`,
+    settingsModalSub: `Configure uma ou várias. A primeira disponível é usada e, se falhar, passa automaticamente para a próxima.`,
+    settingsModalTitle: `⚙️ Configurações · APIs de IA`,
+    settingsRespLang: `Idioma de resposta (IA)`,
+    tagMensaje: `Mensagem`,
+    tagPasos: `Passos`,
+    toastDatosBorrados: `🗑️ Dados apagados`,
+    toastEscribeSituacion: `⚠️ Escreva a situação primeiro`,
+    toastNoCopiar: `⚠️ Não foi possível copiar`,
+    toastNuevaConsultaOk: `🔄 Nova consulta, resultados mantidos`,
+    toastTarjetaEliminada: `🗑️ Cartão excluído`,
+  },
+  uk: {
+    appSub: `Швидкий аналіз і дії`,
+    btnBorrarDatos: `🗑️ Очистити дані`,
+    btnCerrar: `Закрити`,
+    btnCopiado: `✅ Скопійовано`,
+    btnCopiar: `📋 Копіювати`,
+    btnMsg: `✍️ Скласти повідомлення`,
+    btnNuevaConsulta: `🔄 Новий запит`,
+    btnPasos: `🎯 Наступні кроки`,
+    deleteBtnTitle: `Видалити`,
+    errGenerico: `Під час генерації відповіді сталася помилка. Спробуйте ще раз.`,
+    labelMensajeSugerido: `✍️ Запропоноване повідомлення`,
+    loadingLbl: `Аналізую…`,
+    modalUiLangTitle: `Мова інтерфейсу`,
+    phSituacion: `Опишіть коментар клієнта або поточний стан процесу продажу…`,
+    sectionTitleSituacion: `Поточна ситуація`,
+    settingsModalSub: `Налаштуйте один або декілька. Використовується перший доступний; у разі помилки автоматично переходить до наступного.`,
+    settingsModalTitle: `⚙️ Налаштування · API ШІ`,
+    settingsRespLang: `Мова відповіді (ШІ)`,
+    tagMensaje: `Повідомлення`,
+    tagPasos: `Кроки`,
+    toastDatosBorrados: `🗑️ Дані очищено`,
+    toastEscribeSituacion: `⚠️ Спершу опишіть ситуацію`,
+    toastNoCopiar: `⚠️ Не вдалося скопіювати`,
+    toastNuevaConsultaOk: `🔄 Новий запит, результати збережено`,
+    toastTarjetaEliminada: `🗑️ Картку видалено`,
+  },
+  ru: {
+    appSub: `Быстрый анализ и действия`,
+    btnBorrarDatos: `🗑️ Очистить данные`,
+    btnCerrar: `Закрыть`,
+    btnCopiado: `✅ Скопировано`,
+    btnCopiar: `📋 Копировать`,
+    btnMsg: `✍️ Составить сообщение`,
+    btnNuevaConsulta: `🔄 Новый запрос`,
+    btnPasos: `🎯 Следующие шаги`,
+    deleteBtnTitle: `Удалить`,
+    errGenerico: `Произошла ошибка при генерации ответа. Попробуйте снова.`,
+    labelMensajeSugerido: `✍️ Предложенное сообщение`,
+    loadingLbl: `Анализирую…`,
+    modalUiLangTitle: `Язык интерфейса`,
+    phSituacion: `Опишите комментарий клиента или текущее состояние процесса продажи…`,
+    sectionTitleSituacion: `Текущая ситуация`,
+    settingsModalSub: `Настройте один или несколько. Используется первый доступный; при ошибке автоматически переходит к следующему.`,
+    settingsModalTitle: `⚙️ Настройки · API ИИ`,
+    settingsRespLang: `Язык ответа (ИИ)`,
+    tagMensaje: `Сообщение`,
+    tagPasos: `Шаги`,
+    toastDatosBorrados: `🗑️ Данные очищены`,
+    toastEscribeSituacion: `⚠️ Сначала опишите ситуацию`,
+    toastNoCopiar: `⚠️ Не удалось скопировать`,
+    toastNuevaConsultaOk: `🔄 Новый запрос, результаты сохранены`,
+    toastTarjetaEliminada: `🗑️ Карточка удалена`,
+  },
+  he: {
+    appSub: `ניתוח ופעולות מהירות`,
+    btnBorrarDatos: `🗑️ נקה נתונים`,
+    btnCerrar: `סגור`,
+    btnCopiado: `✅ הועתק`,
+    btnCopiar: `📋 העתק`,
+    btnMsg: `✍️ נסח הודעה`,
+    btnNuevaConsulta: `🔄 שאילתה חדשה`,
+    btnPasos: `🎯 השלבים הבאים`,
+    deleteBtnTitle: `מחק`,
+    errGenerico: `אירעה שגיאה ביצירת התשובה. נסה שוב.`,
+    labelMensajeSugerido: `✍️ הודעה מוצעת`,
+    loadingLbl: `מנתח…`,
+    modalUiLangTitle: `שפת הממשק`,
+    phSituacion: `תאר את הערת הלקוח או את המצב הנוכחי של תהליך המכירה…`,
+    sectionTitleSituacion: `המצב הנוכחי`,
+    settingsModalSub: `הגדר אחת או יותר. הראשונה הזמינה תשמש, ובמקרה של כשל תעבור אוטומטית לבאה.`,
+    settingsModalTitle: `⚙️ הגדרות · ממשקי API של בינה מלאכותית`,
+    settingsRespLang: `שפת התשובה (בינה מלאכותית)`,
+    tagMensaje: `הודעה`,
+    tagPasos: `שלבים`,
+    toastDatosBorrados: `🗑️ הנתונים נמחקו`,
+    toastEscribeSituacion: `⚠️ כתוב את המצב קודם`,
+    toastNoCopiar: `⚠️ לא ניתן להעתיק`,
+    toastNuevaConsultaOk: `🔄 שאילתה חדשה, התוצאות נשמרו`,
+    toastTarjetaEliminada: `🗑️ הכרטיס נמחק`,
+  },
+  zh: {
+    appSub: `快速分析与操作`,
+    btnBorrarDatos: `🗑️ 清除数据`,
+    btnCerrar: `关闭`,
+    btnCopiado: `✅ 已复制`,
+    btnCopiar: `📋 复制`,
+    btnMsg: `✍️ 撰写消息`,
+    btnNuevaConsulta: `🔄 新查询`,
+    btnPasos: `🎯 后续步骤`,
+    deleteBtnTitle: `删除`,
+    errGenerico: `生成回复时出错，请重试。`,
+    labelMensajeSugerido: `✍️ 建议消息`,
+    loadingLbl: `分析中…`,
+    modalUiLangTitle: `界面语言`,
+    phSituacion: `描述客户的评论或销售流程的当前情况…`,
+    sectionTitleSituacion: `当前情况`,
+    settingsModalSub: `配置一个或多个。系统会使用第一个可用的；如果失败会自动切换到下一个。`,
+    settingsModalTitle: `⚙️ 设置 · AI接口`,
+    settingsRespLang: `回复语言（AI）`,
+    tagMensaje: `消息`,
+    tagPasos: `步骤`,
+    toastDatosBorrados: `🗑️ 数据已清除`,
+    toastEscribeSituacion: `⚠️ 请先描述情况`,
+    toastNoCopiar: `⚠️ 无法复制`,
+    toastNuevaConsultaOk: `🔄 新查询，结果已保留`,
+    toastTarjetaEliminada: `🗑️ 卡片已删除`,
+  },
+  ja: {
+    appSub: `迅速な分析とアクション`,
+    btnBorrarDatos: `🗑️ データを消去`,
+    btnCerrar: `閉じる`,
+    btnCopiado: `✅ コピーしました`,
+    btnCopiar: `📋 コピー`,
+    btnMsg: `✍️ メッセージを作成`,
+    btnNuevaConsulta: `🔄 新しい相談`,
+    btnPasos: `🎯 次のステップ`,
+    deleteBtnTitle: `削除`,
+    errGenerico: `応答の生成中にエラーが発生しました。もう一度お試しください。`,
+    labelMensajeSugerido: `✍️ 提案されたメッセージ`,
+    loadingLbl: `分析中…`,
+    modalUiLangTitle: `インターフェース言語`,
+    phSituacion: `顧客のコメントや営業プロセスの現在の状況を記入してください…`,
+    sectionTitleSituacion: `現在の状況`,
+    settingsModalSub: `1つまたは複数設定します。利用可能な最初のものが使われ、失敗した場合は自動的に次に切り替わります。`,
+    settingsModalTitle: `⚙️ 設定 · AI API`,
+    settingsRespLang: `応答言語（AI）`,
+    tagMensaje: `メッセージ`,
+    tagPasos: `ステップ`,
+    toastDatosBorrados: `🗑️ データを消去しました`,
+    toastEscribeSituacion: `⚠️ まず状況を記入してください`,
+    toastNoCopiar: `⚠️ コピーできませんでした`,
+    toastNuevaConsultaOk: `🔄 新しい相談、結果は保持されます`,
+    toastTarjetaEliminada: `🗑️ カードを削除しました`,
+  },
+  ko: {
+    appSub: `빠른 분석 및 조치`,
+    btnBorrarDatos: `🗑️ 데이터 지우기`,
+    btnCerrar: `닫기`,
+    btnCopiado: `✅ 복사됨`,
+    btnCopiar: `📋 복사`,
+    btnMsg: `✍️ 메시지 작성`,
+    btnNuevaConsulta: `🔄 새 조회`,
+    btnPasos: `🎯 다음 단계`,
+    deleteBtnTitle: `삭제`,
+    errGenerico: `응답을 생성하는 중 오류가 발생했습니다. 다시 시도해 주세요.`,
+    labelMensajeSugerido: `✍️ 제안된 메시지`,
+    loadingLbl: `분석 중…`,
+    modalUiLangTitle: `인터페이스 언어`,
+    phSituacion: `고객의 코멘트나 영업 프로세스의 현재 상황을 설명하세요…`,
+    sectionTitleSituacion: `현재 상황`,
+    settingsModalSub: `하나 이상 설정하세요. 사용 가능한 첫 번째 항목이 사용되며, 실패하면 자동으로 다음으로 전환됩니다.`,
+    settingsModalTitle: `⚙️ 설정 · AI API`,
+    settingsRespLang: `응답 언어(AI)`,
+    tagMensaje: `메시지`,
+    tagPasos: `단계`,
+    toastDatosBorrados: `🗑️ 데이터가 지워졌습니다`,
+    toastEscribeSituacion: `⚠️ 먼저 상황을 작성하세요`,
+    toastNoCopiar: `⚠️ 복사하지 못했습니다`,
+    toastNuevaConsultaOk: `🔄 새 조회, 결과 유지됨`,
+    toastTarjetaEliminada: `🗑️ 카드가 삭제되었습니다`,
+  },
+  hi: {
+    appSub: `तेज़ विश्लेषण और कार्य`,
+    btnBorrarDatos: `🗑️ डेटा साफ़ करें`,
+    btnCerrar: `बंद करें`,
+    btnCopiado: `✅ कॉपी हो गया`,
+    btnCopiar: `📋 कॉपी करें`,
+    btnMsg: `✍️ संदेश लिखें`,
+    btnNuevaConsulta: `🔄 नई पूछताछ`,
+    btnPasos: `🎯 अगले कदम`,
+    deleteBtnTitle: `हटाएं`,
+    errGenerico: `प्रतिक्रिया बनाते समय एक त्रुटि हुई। कृपया फिर से प्रयास करें।`,
+    labelMensajeSugerido: `✍️ सुझाया गया संदेश`,
+    loadingLbl: `विश्लेषण हो रहा है…`,
+    modalUiLangTitle: `इंटरफ़ेस भाषा`,
+    phSituacion: `ग्राहक की टिप्पणी या बिक्री प्रक्रिया की वर्तमान स्थिति का वर्णन करें…`,
+    sectionTitleSituacion: `वर्तमान स्थिति`,
+    settingsModalSub: `एक या कई सेट करें। पहली उपलब्ध का उपयोग किया जाता है; विफल होने पर स्वचालित रूप से अगली पर चला जाता है।`,
+    settingsModalTitle: `⚙️ सेटिंग्स · AI API`,
+    settingsRespLang: `उत्तर की भाषा (AI)`,
+    tagMensaje: `संदेश`,
+    tagPasos: `कदम`,
+    toastDatosBorrados: `🗑️ डेटा साफ़ हो गया`,
+    toastEscribeSituacion: `⚠️ पहले स्थिति लिखें`,
+    toastNoCopiar: `⚠️ कॉपी नहीं हो सका`,
+    toastNuevaConsultaOk: `🔄 नई पूछताछ, परिणाम सुरक्षित`,
+    toastTarjetaEliminada: `🗑️ कार्ड हटाया गया`,
+  },
+  sw: {
+    appSub: `Uchambuzi na vitendo vya haraka`,
+    btnBorrarDatos: `🗑️ Futa data`,
+    btnCerrar: `Funga`,
+    btnCopiado: `✅ Imenakiliwa`,
+    btnCopiar: `📋 Nakili`,
+    btnMsg: `✍️ Andika ujumbe`,
+    btnNuevaConsulta: `🔄 Uchunguzi mpya`,
+    btnPasos: `🎯 Hatua zinazofuata`,
+    deleteBtnTitle: `Futa`,
+    errGenerico: `Hitilafu ilitokea wakati wa kutengeneza jibu. Jaribu tena.`,
+    labelMensajeSugerido: `✍️ Ujumbe uliopendekezwa`,
+    loadingLbl: `Inachambua…`,
+    modalUiLangTitle: `Lugha ya kiolesura`,
+    phSituacion: `Eleza maoni ya mteja au hali ya sasa ya mchakato wa mauzo…`,
+    sectionTitleSituacion: `Hali ya sasa`,
+    settingsModalSub: `Sanidi moja au kadhaa. Inayopatikana ya kwanza hutumika; ikishindwa hubadilika kiotomatiki kwenda inayofuata.`,
+    settingsModalTitle: `⚙️ Mipangilio · API za AI`,
+    settingsRespLang: `Lugha ya jibu (AI)`,
+    tagMensaje: `Ujumbe`,
+    tagPasos: `Hatua`,
+    toastDatosBorrados: `🗑️ Data imefutwa`,
+    toastEscribeSituacion: `⚠️ Andika hali kwanza`,
+    toastNoCopiar: `⚠️ Imeshindwa kunakili`,
+    toastNuevaConsultaOk: `🔄 Uchunguzi mpya, matokeo yamehifadhiwa`,
+    toastTarjetaEliminada: `🗑️ Kadi imefutwa`,
+  },
+};
+
+const LANG_CODES = ["es", "en", "de", "fr", "it", "pt", "uk", "ru", "he", "zh", "ja", "ko", "hi", "sw"];
+const LANG_NAMES_DISPLAY = {"es": "Español", "en": "English", "de": "Deutsch", "fr": "Français", "it": "Italiano", "pt": "Português", "uk": "Українська", "ru": "Русский", "he": "עברית", "zh": "中文", "ja": "日本語", "ko": "한국어", "hi": "हिन्दी", "sw": "Kiswahili"};
+const LANG_FLAGS_SVG = {"es": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"14\" fill=\"#AA151B\"/><rect y=\"3.5\" width=\"20\" height=\"7\" fill=\"#F1BF00\"/></svg>", "en": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"14\" fill=\"#B22234\"/><g fill=\"#fff\"><rect y=\"1.08\" width=\"20\" height=\"1.08\"/><rect y=\"3.23\" width=\"20\" height=\"1.08\"/><rect y=\"5.38\" width=\"20\" height=\"1.08\"/><rect y=\"7.54\" width=\"20\" height=\"1.08\"/><rect y=\"9.69\" width=\"20\" height=\"1.08\"/><rect y=\"11.85\" width=\"20\" height=\"1.08\"/></g><rect width=\"8\" height=\"7.54\" fill=\"#3C3B6E\"/></svg>", "de": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"4.67\" fill=\"#000\"/><rect y=\"4.67\" width=\"20\" height=\"4.67\" fill=\"#DD0000\"/><rect y=\"9.33\" width=\"20\" height=\"4.67\" fill=\"#FFCE00\"/></svg>", "fr": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"6.67\" height=\"14\" fill=\"#0055A4\"/><rect x=\"6.67\" width=\"6.67\" height=\"14\" fill=\"#fff\"/><rect x=\"13.33\" width=\"6.67\" height=\"14\" fill=\"#EF4135\"/></svg>", "it": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"6.67\" height=\"14\" fill=\"#009246\"/><rect x=\"6.67\" width=\"6.67\" height=\"14\" fill=\"#fff\"/><rect x=\"13.33\" width=\"6.67\" height=\"14\" fill=\"#CE2B37\"/></svg>", "pt": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"14\" fill=\"#009739\"/><polygon points=\"10,2 18,7 10,12 2,7\" fill=\"#FEDD00\"/><circle cx=\"10\" cy=\"7\" r=\"3\" fill=\"#012169\"/></svg>", "uk": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"7\" fill=\"#005BBB\"/><rect y=\"7\" width=\"20\" height=\"7\" fill=\"#FFD500\"/></svg>", "ru": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"4.67\" fill=\"#fff\"/><rect y=\"4.67\" width=\"20\" height=\"4.67\" fill=\"#0039A6\"/><rect y=\"9.33\" width=\"20\" height=\"4.67\" fill=\"#D52B1E\"/></svg>", "he": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"14\" fill=\"#fff\"/><rect y=\"1.5\" width=\"20\" height=\"1.8\" fill=\"#0038B8\"/><rect y=\"10.7\" width=\"20\" height=\"1.8\" fill=\"#0038B8\"/><g fill=\"none\" stroke=\"#0038B8\" stroke-width=\"0.6\"><polygon points=\"10,4.5 12.3,8.5 7.7,8.5\"/><polygon points=\"10,9.5 7.7,5.5 12.3,5.5\"/></g></svg>", "zh": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"14\" fill=\"#DE2910\"/><polygon points=\"4,2 4.6,3.8 6.5,3.8 4.95,4.9 5.55,6.7 4,5.6 2.45,6.7 3.05,4.9 1.5,3.8 3.4,3.8\" fill=\"#FFDE00\"/></svg>", "ja": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"14\" fill=\"#fff\"/><circle cx=\"10\" cy=\"7\" r=\"4\" fill=\"#BC002D\"/></svg>", "ko": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"14\" fill=\"#fff\"/><path d=\"M10 3.5 A3.5 3.5 0 0 1 10 10.5 A1.75 1.75 0 0 1 10 7 A1.75 1.75 0 0 0 10 3.5 Z\" fill=\"#CD2E3A\"/><path d=\"M10 10.5 A3.5 3.5 0 0 1 10 3.5 A1.75 1.75 0 0 1 10 7 A1.75 1.75 0 0 0 10 10.5 Z\" fill=\"#0047A0\"/></svg>", "hi": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"4.67\" fill=\"#FF9933\"/><rect y=\"4.67\" width=\"20\" height=\"4.67\" fill=\"#fff\"/><rect y=\"9.33\" width=\"20\" height=\"4.67\" fill=\"#138808\"/><circle cx=\"10\" cy=\"7\" r=\"1.6\" fill=\"none\" stroke=\"#000080\" stroke-width=\"0.3\"/></svg>", "sw": "<svg class=\"flag-ico\" viewBox=\"0 0 20 14\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"20\" height=\"14\" fill=\"#fff\"/><rect y=\"0.9\" width=\"20\" height=\"3.2\" fill=\"#000\"/><rect y=\"5.4\" width=\"20\" height=\"3.2\" fill=\"#BB0000\"/><rect y=\"9.9\" width=\"20\" height=\"3.2\" fill=\"#006600\"/></svg>"};
+
+let currentUiLang = localStorage.getItem('nexusflash_uilang') || 'es';
+let currentRespLang = localStorage.getItem('nexusflash_resplang') || 'auto';
+
+function tr(key) {
+  const d = I18N[currentUiLang] || I18N.es;
+  if (d && d[key] !== undefined) return d[key];
+  if (I18N.es[key] !== undefined) return I18N.es[key];
+  return key;
+}
+
+function applyUiLang(lang) {
+  if (!LANG_CODES.includes(lang)) lang = 'es';
+  currentUiLang = lang;
+  localStorage.setItem('nexusflash_uilang', lang);
+  fbQueueWrite({uiLang:lang});
+  const lbl = document.getElementById('langBtnLabel');
+  if (lbl) lbl.textContent = lang.toUpperCase();
+
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = tr(el.getAttribute('data-i18n-ph')); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = tr(el.getAttribute('data-i18n-html')); });
+
+  document.querySelectorAll('#langSheetList .lang-opt').forEach(el => {
+    el.classList.toggle('selected', el.getAttribute('data-lang') === lang);
+  });
+}
+
+function setRespLang(lang) {
+  currentRespLang = lang;
+  localStorage.setItem('nexusflash_resplang', lang);
+  fbQueueWrite({respLang:lang});
+  document.querySelectorAll('#respLangChips .settings-chip').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-lang') === lang);
+  });
+  showToast('🌐 ' + (lang === 'auto' ? 'Auto' : (LANG_NAMES_DISPLAY[lang] || lang.toUpperCase())));
+}
+
+function renderLangSheet() {
+  const list = document.getElementById('langSheetList');
+  if (!list) return;
+  list.innerHTML = LANG_CODES.map(code => {
+    const sel = code === currentUiLang ? ' selected' : '';
+    return `<div class="lang-opt${sel}" data-lang="${code}" onclick="applyUiLang('${code}');closeLangSheet();">${LANG_FLAGS_SVG[code]} ${LANG_NAMES_DISPLAY[code]}</div>`;
+  }).join('');
+}
+function openLangSheet() { renderLangSheet(); document.getElementById('langSheetOverlay').classList.add('open'); }
+function closeLangSheet() { document.getElementById('langSheetOverlay').classList.remove('open'); }
+
+function renderRespLangChips() {
+  const wrap = document.getElementById('respLangChips');
+  if (!wrap) return;
+  wrap.innerHTML = `<button type="button" class="settings-chip${currentRespLang==='auto'?' active':''}" data-lang="auto" onclick="setRespLang('auto')">🪄 Auto</button>` +
+    LANG_CODES.map(code =>
+      `<button type="button" class="settings-chip${code===currentRespLang?' active':''}" data-lang="${code}" onclick="setRespLang('${code}')">${LANG_FLAGS_SVG[code]} ${code.toUpperCase()}</button>`
+    ).join('');
+}
+
 const CFG_STORAGE_KEY = 'nexusflash_cfg';
 const CFG = { claude:'', gemini:'', chatgpt:'', grok:'' };
 function cfgLoad(){ try{ const c=localStorage.getItem(CFG_STORAGE_KEY); if(c) Object.assign(CFG, JSON.parse(c)); }catch(e){} }
@@ -290,6 +1069,45 @@ async function callAI(messages, system, opts={}){
   return last || { error:'NO_MODEL', message:'Ningún proveedor respondió' };
 }
 
+// Extracción y reparación robusta de JSON proveniente de la IA (por si algún
+// módulo futuro pide respuesta en JSON). Corrige respuestas truncadas y
+// saltos de línea sin escapar dentro de un string — evita "Unterminated
+// string in JSON" y errores similares.
+function extractJson(rawText){
+  let clean=String(rawText).trim().replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();
+  const fi=clean.indexOf('{'),la=clean.lastIndexOf('}');
+  if(fi!==-1&&la!==-1&&la>fi) clean=clean.slice(fi,la+1);
+  try{ return JSON.parse(clean); }catch(e){}
+  let repaired='', inString=false, escapeNext=false;
+  for(let i=0;i<clean.length;i++){
+    const ch=clean[i];
+    if(inString){
+      if(escapeNext){ repaired+=ch; escapeNext=false; continue; }
+      if(ch==='\\'){ repaired+=ch; escapeNext=true; continue; }
+      if(ch==='"'){ repaired+=ch; inString=false; continue; }
+      if(ch==='\n'){ repaired+='\\n'; continue; }
+      if(ch==='\r'){ repaired+='\\r'; continue; }
+      if(ch==='\t'){ repaired+='\\t'; continue; }
+      repaired+=ch;
+    } else {
+      if(ch==='"'){ inString=true; repaired+=ch; continue; }
+      repaired+=ch;
+    }
+  }
+  try{ return JSON.parse(repaired); }catch(e){}
+  let noTrailing=repaired.replace(/,\s*([\]}])/g,'$1');
+  try{ return JSON.parse(noTrailing); }catch(e){}
+  let fixed=noTrailing, quoteCount=0;
+  for(let i=0;i<fixed.length;i++){ if(fixed[i]==='"'&&fixed[i-1]!=='\\') quoteCount++; }
+  if(quoteCount%2!==0) fixed+='"';
+  const opens=(fixed.match(/\{/g)||[]).length, closes=(fixed.match(/\}/g)||[]).length;
+  const opensA=(fixed.match(/\[/g)||[]).length, closesA=(fixed.match(/\]/g)||[]).length;
+  for(let i=0;i<opensA-closesA;i++) fixed+=']';
+  for(let i=0;i<opens-closes;i++) fixed+='}';
+  try{ return JSON.parse(fixed); }catch(e){}
+  throw new Error('La IA devolvió una respuesta incompleta o mal formada. Intenta de nuevo.');
+}
+
 // ─── UI de Configuración ────────────────────────────────────────────────────
 const AI_PROVIDERS_META = [
   { id:'claude',  label:'Claude (Anthropic)', placeholder:'sk-ant-api03-...', help:'console.anthropic.com/settings/keys' },
@@ -366,7 +1184,7 @@ function renderApiProvidersUI(){
       const val = inp.value.trim();
       if(!val){ showToast('Ingresa una API key primero'); return; }
       if(cfgValidateKey(p.id, val) === false){ showToast('⚠️ Formato de clave no reconocido para ' + p.label); }
-      CFG[p.id] = val; cfgSaveLocal(); renderApiProvidersUI();
+      CFG[p.id] = val; cfgSaveLocal(); fbQueueWrite({apiKeys:CFG}); renderApiProvidersUI();
       showToast('✓ API Key de ' + p.label + ' guardada, verificando conexión…');
       const dot2=document.getElementById('apikey-dot-'+p.id), txt2=document.getElementById('apikey-status-text-'+p.id);
       if(dot2){ dot2.classList.remove('has-key','error'); dot2.classList.add('testing'); }
@@ -388,12 +1206,12 @@ function renderApiProvidersUI(){
       else{ if(dot2){ dot2.classList.remove('has-key'); dot2.classList.add('error'); } if(txt2) txt2.textContent='✗ '+result.message; showToast(`✗ Falló la conexión con ${p.label}`); }
     });
     list.querySelector(`[data-del="${p.id}"]`).addEventListener('click', () => {
-      CFG[p.id] = ''; cfgSaveLocal(); renderApiProvidersUI();
+      CFG[p.id] = ''; cfgSaveLocal(); fbQueueWrite({apiKeys:CFG}); renderApiProvidersUI();
       showToast('Clave de ' + p.label + ' borrada');
     });
   });
 }
-function openSettings(){ renderApiProvidersUI(); document.getElementById('settingsOverlay').classList.add('open'); }
+function openSettings(){ renderApiProvidersUI(); renderRespLangChips(); document.getElementById('settingsOverlay').classList.add('open'); }
 function closeSettings(){ document.getElementById('settingsOverlay').classList.remove('open'); }
 cfgLoad();
 
@@ -403,9 +1221,13 @@ function toggleTheme(){
   html.dataset.theme = next;
   document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
   localStorage.setItem('nexusflash_theme', next);
+  fbQueueWrite({theme:next});
 }
 document.documentElement.dataset.theme = localStorage.getItem('nexusflash_theme') || 'dark';
 document.getElementById('themeBtn').textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+applyUiLang(currentUiLang);
+initFirebaseCloud(); // exige login (Google / email+contraseña / enlace por correo) en navegador; en artefacto sigue en modo local
+initAccountUI();
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -419,7 +1241,7 @@ function copiarTexto(id, btn){
   const original = btn.textContent;
 
   function marcarCopiado(){
-    btn.textContent = '✅ Copiado';
+    btn.textContent = tr('btnCopiado');
     setTimeout(()=>btn.textContent = original, 1500);
   }
 
@@ -436,7 +1258,7 @@ function copiarTexto(id, btn){
       document.body.removeChild(ta);
       marcarCopiado();
     }catch(e){
-      showToast('⚠️ No se pudo copiar');
+      showToast(tr('toastNoCopiar'));
     }
   }
 
@@ -457,7 +1279,7 @@ function limpiarTexto(){
     consultaActual++;
   }
   ultimoTextoConsulta = '';
-  showToast('🔄 Nueva consulta, resultados conservados');
+  showToast(tr('toastNuevaConsultaOk'));
 }
 
 function limpiarFormulario(){
@@ -466,23 +1288,32 @@ function limpiarFormulario(){
   consultaActual = 1;
   ultimoTextoConsulta = '';
   document.getElementById('situacion').focus();
-  showToast('🗑️ Datos borrados');
+  showToast(tr('toastDatosBorrados'));
 }
 
-const PROMPTS = {
-  pasos: `Eres un asistente experto en ventas. A partir del siguiente texto que describe un comentario de cliente o la situación actual de un proceso de venta, entrega ÚNICAMENTE una lista breve y práctica de los próximos pasos inmediatos a seguir. No agregues análisis, contexto adicional, introducciones ni conclusiones. Usa frases cortas y accionables, una por línea, con un guion al inicio. Adapta los pasos exactamente a la situación descrita. Responde en español.
+const RESP_LANG_NAMES = { es:'Spanish', en:'English', de:'German', fr:'French', it:'Italian', pt:'Portuguese', uk:'Ukrainian', ru:'Russian', he:'Hebrew', zh:'Chinese', ja:'Japanese', ko:'Korean', hi:'Hindi', sw:'Swahili' };
+function idiomaRespuestaPrompt(){
+  if (currentRespLang && currentRespLang !== 'auto') return RESP_LANG_NAMES[currentRespLang] || currentRespLang;
+  return null;
+}
+function getPrompts(){
+  const forzado = idiomaRespuestaPrompt();
+  const reglaIdioma = forzado ? `Responde completamente en ${forzado}.` : 'Responde en el mismo idioma del texto de la situación.';
+  return {
+  pasos: `Eres un asistente experto en ventas. A partir del siguiente texto que describe un comentario de cliente o la situación actual de un proceso de venta, entrega ÚNICAMENTE una lista breve y práctica de los próximos pasos inmediatos a seguir. No agregues análisis, contexto adicional, introducciones ni conclusiones. Usa frases cortas y accionables, una por línea, con un guion al inicio. Adapta los pasos exactamente a la situación descrita. ${reglaIdioma}
 
 Situación:
 """
 {TEXTO}
 """`,
-  mensaje: `Eres un asistente experto en ventas. A partir del siguiente texto que describe un comentario de cliente o la situación actual de un proceso de venta, redacta el siguiente mensaje que se debería enviar al cliente o prospecto. El mensaje debe estar listo para copiar y enviar tal cual (sin placeholders, sin instrucciones, sin comentarios extra), debe ser natural, profesional y adaptado al contexto y objetivo de la gestión. Responde solo con el mensaje, en español.
+  mensaje: `Eres un asistente experto en ventas. A partir del siguiente texto que describe un comentario de cliente o la situación actual de un proceso de venta, redacta el siguiente mensaje que se debería enviar al cliente o prospecto. El mensaje debe estar listo para copiar y enviar tal cual (sin placeholders, sin instrucciones, sin comentarios extra), debe ser natural, profesional y adaptado al contexto y objetivo de la gestión. Responde solo con el mensaje. ${reglaIdioma}
 
 Situación:
 """
 {TEXTO}
 """`
-};
+  };
+}
 
 function actualizarEtiquetasConsulta(tipo){
   const cont = document.getElementById('resultados');
@@ -503,7 +1334,7 @@ function actualizarEtiquetasConsulta(tipo){
       return;
     }
     const idx = orden.indexOf(c.dataset.consulta) + 1;
-    tagEl.textContent = tipo === 'pasos' ? ('Pasos ' + idx) : ('Mensaje ' + idx);
+    tagEl.textContent = tipo === 'pasos' ? (tr('tagPasos') + ' ' + idx) : (tr('tagMensaje') + ' ' + idx);
   });
 }
 
@@ -511,13 +1342,13 @@ function eliminarTarjeta(btn, tipo){
   const card = btn.closest('.card');
   if(card) card.remove();
   actualizarEtiquetasConsulta(tipo);
-  showToast('🗑️ Tarjeta eliminada');
+  showToast(tr('toastTarjetaEliminada'));
 }
 
 async function ejecutar(tipo){
   const texto = document.getElementById('situacion').value.trim();
   if(!texto){
-    showToast('⚠️ Escribe la situación primero');
+    showToast(tr('toastEscribeSituacion'));
     return;
   }
 
@@ -535,7 +1366,7 @@ async function ejecutar(tipo){
   document.getElementById('btnMsg').disabled = true;
 
   const resId = 'res_' + tipo + '_' + Date.now();
-  const label = tipo === 'pasos' ? '🎯 Siguientes pasos' : '✍️ Mensaje sugerido';
+  const label = tipo === 'pasos' ? tr('btnPasos') : tr('labelMensajeSugerido');
   const loadingId = 'load_' + Date.now();
 
   const cont = document.getElementById('resultados');
@@ -548,12 +1379,12 @@ async function ejecutar(tipo){
       <span class="result-label">${label}</span>
       <div class="result-head-right">
         <span class="result-tag"></span>
-        <button class="delete-btn" onclick="eliminarTarjeta(this,'${tipo}')" title="Eliminar">🗑️</button>
+        <button class="delete-btn" onclick="eliminarTarjeta(this,'${tipo}')" title="${tr('deleteBtnTitle')}">🗑️</button>
       </div>
     </div>
     <div id="${loadingId}" class="loading-box">
       <div class="spinner"></div>
-      <div class="lbl">Analizando…</div>
+      <div class="lbl">${tr('loadingLbl')}</div>
     </div>
   `;
 
@@ -576,7 +1407,7 @@ async function ejecutar(tipo){
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try{
-    const prompt = PROMPTS[tipo].replace('{TEXTO}', texto);
+    const prompt = getPrompts()[tipo].replace('{TEXTO}', texto);
     const r = await callAI([{ role:'user', content: prompt }], null, { maxTokens: 1000 });
     if(!r.ok) throw new Error(r.message || 'Error de IA');
     const text = r.text;
@@ -584,11 +1415,11 @@ async function ejecutar(tipo){
     document.getElementById(loadingId).outerHTML = `
       <div class="result-card" id="${resId}">${text.replace(/</g,'&lt;')}</div>
       <div class="btn-row" style="margin-top:10px;">
-        <button class="btn-sm" onclick="copiarTexto('${resId}', this)">📋 Copiar</button>
+        <button class="btn-sm" onclick="copiarTexto('${resId}', this)">${tr('btnCopiar')}</button>
       </div>
     `;
   }catch(err){
-    document.getElementById(loadingId).outerHTML = `<div class="result-card" style="color:var(--red);">${err.message && err.message.includes('API Key') ? err.message : 'Ocurrió un error al generar la respuesta. Intenta nuevamente.'}</div>`;
+    document.getElementById(loadingId).outerHTML = `<div class="result-card" style="color:var(--red);">${err.message && err.message.includes('API Key') ? err.message : tr('errGenerico')}</div>`;
   }finally{
     document.getElementById('btnPasos').disabled = false;
     document.getElementById('btnMsg').disabled = false;
