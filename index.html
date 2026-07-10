@@ -303,14 +303,22 @@ const firebaseConfig = (function(){
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch(e) { saved = null; }
   if (saved && saved.apiKey) return saved;
-  var pasted = window.prompt('Configuracion de Firebase para Nexus Flash (solo la primera vez en este dispositivo).\nPega aqui el JSON de configuracion:');
-  if (pasted) {
+  for (var intento = 0; intento < 3; intento++) {
+    var pasted = window.prompt('Configuracion de Firebase para Nexus Flash (solo la primera vez en este dispositivo).\nPega aqui el JSON de configuracion (debe empezar con { y las comillas en los nombres de los campos):');
+    if (!pasted) break;
     try {
       var cfg = JSON.parse(pasted);
+      if (!cfg.apiKey) {
+        window.alert('Ese texto es JSON valido pero le falta el campo "apiKey". Revisa que copiaste el bloque completo e intenta de nuevo.');
+        continue;
+      }
       localStorage.setItem(LS_KEY, JSON.stringify(cfg));
       return cfg;
-    } catch(e) { console.warn('Configuracion de Firebase invalida, la sincronizacion quedara desactivada.'); }
+    } catch(e) {
+      window.alert('El texto pegado no es un JSON valido. Debe verse asi (con comillas en TODOS los nombres de campo):\n{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}\n\nIntenta de nuevo.');
+    }
   }
+  window.alert('No se configuro Firebase para Nexus Flash. La app seguira funcionando localmente, sin sincronizacion, hasta que recargues la pagina y lo captures correctamente.');
   return { apiKey:'', authDomain:'', projectId:'', storageBucket:'', messagingSenderId:'', appId:'' };
 })();
 
@@ -384,6 +392,11 @@ function initFirebaseCloud(){
     renderAccountUI();
     return;
   }
+  if(!firebaseConfig || !firebaseConfig.apiKey){
+    showAuthGate();
+    gateMsg('Falta la configuración de Firebase. Recarga la página para volver a capturarla.', true);
+    return;
+  }
   try{
     firebase.initializeApp(firebaseConfig);
     try{ firebase.analytics(); }catch(e){}
@@ -393,7 +406,7 @@ function initFirebaseCloud(){
       console.warn('[Nube] Persistencia offline no disponible:', err.code||err);
     });
     initAuthGate();
-    gateCompleteEmailLinkIfNeeded().finally(()=>{
+    gateCompleteEmailLinkIfNeeded().catch(()=>{}).finally(()=>{
       fbAuth.onAuthStateChanged(async (user)=>{
         if(user){
           hideAuthGate();
@@ -404,14 +417,17 @@ function initFirebaseCloud(){
           fbCloudReady = true;
           renderAccountUI();
         } else {
-          // Ya no se crea sesión anónima automática: en navegador real se exige login (Google, email+contraseña o enlace por correo)
           fbCloudReady = false;
           showAuthGate();
         }
+      }, (err)=>{
+        showAuthGate();
+        gateMsg('Error de sesión: '+(err.message||err.code||err), true);
       });
     });
   }catch(e){
-    // Esto sí es un error real (config, cuota, reglas, etc.), no un bloqueo de entorno
+    showAuthGate();
+    gateMsg('No se pudo inicializar Firebase: '+(e.message||e), true);
     console.warn('[Nube] Firebase falló al inicializar:', e);
   }
 }
